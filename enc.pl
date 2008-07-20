@@ -747,7 +747,7 @@ else  /*  if we are fixed length up to 256.   negative numbers are the new recor
      ystart := 3;
    else
      xmode := 0; /* strange mode where there is no length stored */
-     ystart := 2; /* maybee start before that , like A004 */
+     ystart := 1; /* maybee start before that , like A004 */
      end if; /* if we are equal to the negative length  */
    end if; /*  if we are greater than 256.   negative numbers are the new record format */
   
@@ -772,7 +772,7 @@ loop
     n1 := 0;
   else 
     
-    if ft = '$varv' then
+    if ft = '$varv' and xmode = 2 then
       x1 := dbms_lob.substr(xblob,2,ystart);
       /* convert hex into a number */
       n1 := 0;
@@ -803,14 +803,17 @@ loop
 	n1 := 0; /* this record is skipped as well */
         end if; /* if we are skipping fields */      
       ystart := ystart + 1;
-    elsif ft = '$varf' then /* fixed length 1 word (2 bytes) */
+    elsif ft = '$varf'  /* fixed length 1 word (2 bytes) */
+            or
+	   ( ft = '$varv' and xmode != 2) /*Q and we are an older style */
+	   then
       if /* hack */ xbloblength >0 and maxn1 = 2 and xtabname= 'T5M4S' then
         ystart := ystart+1; /* skip one extra zero that is in this format */
 	n1 := maxn1;
       else
         n1 := maxn1;
 	end if;
-    elsif ft='$varp' then /* packed number */
+    elsif ft='$varp'  then /* packed number */
       n1 := 1;
       xn := dbms_lob.substr(xblob,50,ystart);
       
