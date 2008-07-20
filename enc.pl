@@ -747,7 +747,7 @@ else  /*  if we are fixed length up to 256.   negative numbers are the new recor
      ystart := 3;
    else
      xmode := 0; /* strange mode where there is no length stored */
-     ystart := 1; /* maybee start before that , like A004 */
+     ystart := 2; /* maybee start before that , like A004 */
      end if; /* if we are equal to the negative length  */
    end if; /*  if we are greater than 256.   negative numbers are the new record format */
   
