@@ -1,4 +1,4 @@
-#
+#!/usr/bin/perl
 
 # This script obsuftigates and drms the code - by watermarking the code in multiple ways
 # because of the multiple ways, it is likely that we can figure out who copied what
@@ -348,7 +348,7 @@ local ($serial,$serial2,$serial3,$serial4,$database_name,$company_name,$owner) =
 local $dbug;
 local ($s) = ("");
 
-$dbug="\nselect 'dbms_lob.substr(vardata,3,1) zhib,dataln,' from dual;";
+$dbug="\nselect 'dbms_lob.substr(vardata,20,1) zhib,dataln,' from dual;";
 # $dbug = ""
 
 
@@ -692,14 +692,6 @@ if xbloblength < 0 then
   startcode := dbms_lob.substr(xblob,2,1);
   
   n1 := 0;
-  c1 := substr(startcode,1,1);
-  if (c1 <='9') then n1 := n1*16+(ascii(c1)-ascii('0'));
-    else n1 := n1 * 16 + ascii(c1) - ascii('A') + 10;
-   end if;
-  c1 := substr(startcode,2,1);
-  if (c1 <='9') then n1 := n1*16+(ascii(c1)-ascii('0'));
-    else n1 := n1 * 16 + ascii(c1) - ascii('A') + 10;
-   end if;
   c1 := substr(startcode,3,1);
   if (c1 <='9') then n1 := n1*16+(ascii(c1)-ascii('0'));
     else n1 := n1 * 16 + ascii(c1) - ascii('A') + 10;
@@ -708,21 +700,6 @@ if xbloblength < 0 then
   if (c1 <='9') then n1 := n1*16+(ascii(c1)-ascii('0'));
     else n1 := n1 * 16 + ascii(c1) - ascii('A') + 10;
    end if;
-   
-   /* twos compliment */
-   if (n1>32768) then n1 :=  -(65536 + n1); end if;
-   if n1=xbloblength then
-     xmode := 2; /* modern mode */
-     ystart := 4;
-   else
-     xmode := 0; /* strange mode where there is no length stored */
-     ystart := 1; /* maybee start before that , like A004 */
-     end if; /* if we are equal to the negative length  */
-   
-else  /*  if we are less than 256.   negative numbers are the new record format */
-  startcode := dbms_lob.substr(xblob,2,1);
-  
-  n1 := 0;
   c1 := substr(startcode,1,1);
   if (c1 <='9') then n1 := n1*16+(ascii(c1)-ascii('0'));
     else n1 := n1 * 16 + ascii(c1) - ascii('A') + 10;
@@ -731,6 +708,38 @@ else  /*  if we are less than 256.   negative numbers are the new record format 
   if (c1 <='9') then n1 := n1*16+(ascii(c1)-ascii('0'));
     else n1 := n1 * 16 + ascii(c1) - ascii('A') + 10;
    end if;
+   
+   /* twos compliment */
+   n1 :=  n1 - 32768; 
+   if n1=xbloblength then
+     xmode := 2; /* modern mode */
+     ystart := 4;
+   else
+     xmode := 0; /* strange mode where there is no length stored */
+     ystart := 1; /* maybee start before that , like A004 */
+     end if; /* if we are equal to the negative length  */
+   
+else  /*  if we are fixed length up to 256.   negative numbers are the new record format */
+  startcode := dbms_lob.substr(xblob,2,1);
+  
+  n1 := 0;
+  c1 := substr(startcode,3,1);
+  if (c1 <='9') then n1 := n1*16+(ascii(c1)-ascii('0'));
+    else n1 := n1 * 16 + ascii(c1) - ascii('A') + 10;
+   end if;
+  c1 := substr(startcode,4,1);
+  if (c1 <='9') then n1 := n1*16+(ascii(c1)-ascii('0'));
+    else n1 := n1 * 16 + ascii(c1) - ascii('A') + 10;
+   end if;
+  c1 := substr(startcode,1,1);
+  if (c1 <='9') then n1 := n1*16+(ascii(c1)-ascii('0'));
+    else n1 := n1 * 16 + ascii(c1) - ascii('A') + 10;
+   end if;
+  c1 := substr(startcode,2,1);
+  if (c1 <='9') then n1 := n1*16+(ascii(c1)-ascii('0'));
+    else n1 := n1 * 16 + ascii(c1) - ascii('A') + 10;
+   end if;
+
    
    /* twos compliment */
    if n1=xbloblength then
@@ -845,6 +854,8 @@ return dbms_lob.substr(xblob,n1,ystart);
 end;
 /
 
+show error
+l
 
   
 create or replace function &code_owner..$sx_pool_hex_column(xblob in blob,
