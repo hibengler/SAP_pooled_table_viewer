@@ -1,0 +1,6 @@
+export SQLPATH=""
+export PREFIX="set heading off feedback off verify off pagesize 0 linesize 400"
+{
+ echo $PREFIX
+ cat
+ } | sqlplus -s -l $DSG_USER
