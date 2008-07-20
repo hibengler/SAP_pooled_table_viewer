@@ -772,7 +772,7 @@ loop
     n1 := 0;
   else 
     
-    if ft = '$varv' and xmode = 2 then
+    if ft = '$varv' and xmode != 0 then
       x1 := dbms_lob.substr(xblob,2,ystart);
       /* convert hex into a number */
       n1 := 0;
@@ -805,7 +805,7 @@ loop
       ystart := ystart + 1;
     elsif ft = '$varf'  /* fixed length 1 word (2 bytes) */
             or
-	   ( ft = '$varv' and xmode != 2) /*Q and we are an older style */
+	   ( ft = '$varv' and xmode = 0) /*$varv and we are an older style */
 	   then
       if /* hack */ xbloblength >0 and maxn1 = 2 and xtabname= 'T5M4S' then
         ystart := ystart+1; /* skip one extra zero that is in this format */
