@@ -27,13 +27,21 @@ $serial4=ASE;
 #print STDOUT &number_to_code(223342432) . "\n";
 #print STDOUT &code_to_number(&number_to_code(223342432)) . "\n";
 
+open(CRETAB,">cretab.sql");
+print CRETAB &generate_cretab($serial1,$serial2,$serial3,$serial4,"JOE","Supersmith","SAPSR3"); 
+close CRETAB;
 open(CRECODE,">crecode.sql");
 print CRECODE &generate_crecode($serial1,$serial2,$serial3,$serial4,"JOE","Supersmith","SAPSR3"); 
 close CRECODE;
+open(PRIMETAB,">primetab.sql");
+print PRIMETAB &generate_primetab($serial1,$serial2,$serial3,$serial4,"JOE","Supersmith","SAPSR3"); 
+close PRIMETAB;
 open (BUILD_POOL_TABLE,">build_pool_table.sql");
 print BUILD_POOL_TABLE &generate_build_pool_table($serial1,$serial2,$serial3,$serial4,"JOE","Supersmith","SAPSR3");
 close BUILD_POOL_TABLE;
-
+open (BUILD_POOL_DEBUG,">build_pool_debug.sql");
+print BUILD_POOL_DEBUG &generate_build_pool_debug($serial1,$serial2,$serial3,$serial4,"JOE","Supersmith","SAPSR3");
+close BUILD_POOL_DEBUG;
 
 sub number_to_code {
 local ($a) = @_;
@@ -150,6 +158,9 @@ append appnd apnd ap apd extend extnd extd ed xtnd finesse finish mark polish);
 vs vstr vstrg vch vchr vchar vchars vstring sv strv strgv chv chrv charv polishv);
 @hex = qw(code x hx hex hexd hexad hexadml hexdml hdml hxd xd hd
 cx chx chex chexd chexad chexadml hxb hexb base16 c09af mhex mh mhx mhexad);
+@debg = qw(dbg debug db test tst tstdb testdb testdbg eval testeval 
+dbgeval evaluate evaltst evaldb dbeval debugtest dbgtst overvw dbgview view undstnd
+parsedbg deduce underdbg testview viewtest viewdb);
 
 
 $prefix = "sx_";
@@ -165,6 +176,7 @@ $prefix = "sx_";
 # 9-13  5 - sx_fieldpos_for_table and sx_raw_packed_to_number.  This is the simple drm ha ha ha
 $pl =  $pool[&idx($serial2,0)];
 $cl = $column[&idx($serial2,2)];
+$debg = $debg[&idx($serial2,2)];
 
 $sx_pool_char_column = $prefix . $pl .
         "_" . $char[&idx($serial2,1)] .
@@ -198,6 +210,7 @@ $sx_pool_date_column =  $prefix . $pl . "_date_$cl";
 $sx_pool_time_column  =  $prefix . $pl . "_time_$cl";
 $sx_pool_double_column  =  $prefix . $pl . "_double_$cl" ;
 $sx_pool_float_column  =  $prefix . $pl . "_float_$cl";
+$sx_debug_column = $prefix . $pl . "_" . $debg;
 }
 
 
@@ -348,8 +361,8 @@ local ($serial,$serial2,$serial3,$serial4,$database_name,$company_name,$owner) =
 local $dbug;
 local ($s) = ("");
 
-$dbug="\nselect 'dbms_lob.substr(vardata,20,1) zhib,dataln,' from dual;";
-# $dbug = ""
+#$dbug="\nselect 'dbms_lob.substr(vardata,20,1) zhib,dataln,' from dual;";
+$dbug = ""
 
 
 &generate_function_names_from_serial2($serial2);
@@ -469,6 +482,188 @@ $s;
 
 
 
+sub generate_build_pool_debug {
+local ($serial,$serial2,$serial3,$serial4,$database_name,$company_name,$owner) = @_;
+# Serial is a special code that we internally set.  It is not to be stored directly
+# Database name is the name of the database
+# company name is the name of the company
+# serial2 is used to osfucitae the name of the variables - it should be unique for company
+# is used to figure out which key field means what. Company specific
+# serial3 is used for translating the variable code  
+# a-i are 0-9 but the others variate
+# serial4 is used for return watermarking
+local $dbug;
+local ($s) = ("");
+
+$dbug="\nselect 'dbms_lob.substr(vardata,40,1) zhib,dataln,' from dual;";
+# $dbug = ""
+
+
+&generate_function_names_from_serial2($serial2);
+&generate_char_codes_from_serial3($serial3);
+
+$s = "
+REM build_pool_debug.sql
+REM Copyright(R) Killer Cool Development 2007-2008 All Rights Reserved.
+REM This code has been copyrighted for the company $company_name
+REM For use in the oracle database named $database_name where the SAP tables are in $owner
+REM
+REM Package Version 1.4
+REM ModuleVersion 2.1.18.1
+REM This program will generate a debug extract view that allows troubleshooting with any errors on accessing a pool table/
+REM It takes 4 parameters
+REM view_name - the name of the view
+REM prefix - the name of the prefix to use for the view names.  Normally this is null \"\", but
+REM You could set it to whatever you desire.  Note that the auxilliary function and table names will be prefixed with
+REM $prefix regardless of this setting.
+REM
+REM owner
+REM Usually, this is SAPSR3.
+REM
+REM code_owner
+REM This could be 
+REM   SAPSR3 - If you dare to put these views. This is more convienent but less safe.
+REM   SAPSR3P - A separate schema with limited access to only POOL tables and DDL tables. This is more safe.
+REM   another user - If just testing.
+REM owner - the owner of the SAP tables
+REM
+REM note that __DEBUG will be postfixed on the view name
+REM
+REM This script is designed to be run by a DBA account on the database that gets the views.
+REM                
+define view_name=\"\&1\"
+define prefix=\"\&2\"
+define owner=\"\&3\"
+define code_owner=\"\&4\"
+
+
+
+select 'create or replace view \&code_owner..\"\&prefix.\&view_name.__DEBUG\" as select' from dual;$dbug
+
+select 
+decode(to_number(position),1,null,',')||
+decode(keyflag,'X',
+   decode(inttype,'C','substr(varkey,'||(startint+1)
+      ||','||
+        to_number(intlen) ||') ',
+	'N','to_number(substr(varkey,'||(startint+1)
+      ||','||
+        to_number(intlen)||')) ',
+'D','to_date(substr(varkey,'||(startint+1)
+      ||','||
+              to_number(intlen)||'),''YYYYMMDD'') ',
+'substr(varkey,'||(startint+1)
+      ||','||
+        to_number(intlen) ||') '	      
+	),
+   decode(inttype,
+   'C',' \&code_owner..$sx_pool_column(vardata,dataln,'||dataseq||','||fieldpos||','''||tabname||''','''||fieldname||
+     ''')'
+,  'N',' \&code_owner..$sx_pool_column(vardata,dataln,'||dataseq||','||fieldpos||','''||tabname||''','''||fieldname||''')'
+,  'X', decode(datatype,
+         'RAW',' \&code_owner..$sx_pool_column(vardata,dataln,'||dataseq||','||fieldpos||','''||tabname||''','''||fieldname||''')'
+         ,'INT1',' \&code_owner..$sx_pool_column(vardata,dataln,'||dataseq||','||fieldpos||','''||tabname||''','''||fieldname||''')'
+         ,'INT2',' \&code_owner..$sx_pool_column(vardata,dataln,'||dataseq||','||fieldpos||','''||tabname||''','''||fieldname||''')'
+         ,'INT4',' \&code_owner..$sx_pool_column(vardata,dataln,'||dataseq||','||fieldpos||','''||tabname||''','''||fieldname||''')'
+         , ' \&code_owner..$sx_pool_column(vardata,dataln,'||dataseq||','||fieldpos||','''||tabname||''','''||fieldname||''')'
+	 )
+,  'P',' \&code_owner..$sx_pool_column(vardata,dataln,'||dataseq||','||fieldpos||','''||tabname||''','''||fieldname||''')'
+,  'D',' \&code_owner..$sx_pool_column(vardata,dataln,'||dataseq||','||fieldpos||','''||tabname||''','''||fieldname||''')'
+,  'F',' \&code_owner..$sx_pool_column(vardata,dataln,'||dataseq||','||fieldpos||','''||tabname||''','''||fieldname||''')'
+,  ' ',' \&code_owner..$sx_pool_column(vardata,dataln,'||dataseq||','||fieldpos||','''||tabname||''','''||fieldname||''')'
+,  'T',' \&code_owner..$sx_pool_column(vardata,dataln,'||dataseq||','||fieldpos||','''||tabname||''','''||fieldname||''')'
+,'???unknown inttype '||inttype||'.'
+	))
+	   || decode(inttype,' ','\"'||fieldname||position|| '\"','\"'||fieldname||'\"')
+from	   
+(select c.*,(select nvl(sum(intlen),0) startint
+      from \&owner..dd03l c2
+      where c2.tabname = c.tabname
+      and c2.as4local = c.as4local
+      and c2.as4vers = c.as4vers
+      and c2.position < c.position
+      and keyflag='X') startint,
+(select nvl(count(*),0)+1 dataseq
+      from \&owner..dd03l c2
+      where c2.tabname = c.tabname
+      and c2.as4local = c.as4local
+      and c2.as4vers = c.as4vers
+      and c2.position < c.position
+      and keyflag=' ') dataseq,
+(select nvl(sum(intlen),0) startint
+      from \&owner..dd03l c2
+      where c2.tabname = c.tabname
+      and c2.as4local = c.as4local
+      and c2.as4vers = c.as4vers
+      and c2.position < c.position
+      and keyflag != 'X') startdataint      ,
+    \&code_owner..$sx_concatenate_string(\&code_owner..$sx_fieldpos_for_table(tabname,as4local,as4vers,fieldname)) fieldpos
+from \&owner..dd03l c
+) c
+where c.tabname='\&view_name'
+order by position;
+
+
+select 
+','||
+   decode(inttype,
+   'C',' \&code_owner..$sx_debug_column(vardata,dataln,'||dataseq||','||fieldpos||','''||tabname||''','''||fieldname||
+     ''')'
+,  'N',' \&code_owner..$sx_debug_column(vardata,dataln,'||dataseq||','||fieldpos||','''||tabname||''','''||fieldname||''')'
+,  'X', decode(datatype,
+         'RAW',' \&code_owner..$sx_debug_column(vardata,dataln,'||dataseq||','||fieldpos||','''||tabname||''','''||fieldname||''')'
+         ,'INT1',' \&code_owner..$sx_debug_column(vardata,dataln,'||dataseq||','||fieldpos||','''||tabname||''','''||fieldname||''')'
+         ,'INT2',' \&code_owner..$sx_debug_column(vardata,dataln,'||dataseq||','||fieldpos||','''||tabname||''','''||fieldname||''')'
+         ,'INT4',' \&code_owner..$sx_debug_column(vardata,dataln,'||dataseq||','||fieldpos||','''||tabname||''','''||fieldname||''')'
+         , ' \&code_owner..$sx_debug_column(vardata,dataln,'||dataseq||','||fieldpos||','''||tabname||''','''||fieldname||''')'
+	 )
+,  'P',' \&code_owner..$sx_debug_column(vardata,dataln,'||dataseq||','||fieldpos||','''||tabname||''','''||fieldname||''')'
+,  'D',' \&code_owner..$sx_debug_column(vardata,dataln,'||dataseq||','||fieldpos||','''||tabname||''','''||fieldname||''')'
+,  'F',' \&code_owner..$sx_debug_column(vardata,dataln,'||dataseq||','||fieldpos||','''||tabname||''','''||fieldname||''')'
+,  ' ',' \&code_owner..$sx_debug_column(vardata,dataln,'||dataseq||','||fieldpos||','''||tabname||''','''||fieldname||''')'
+,  'T',' \&code_owner..$sx_debug_column(vardata,dataln,'||dataseq||','||fieldpos||','''||tabname||''','''||fieldname||''')'
+,'???unknown inttype '||inttype||'.'
+	)
+	   || decode(inttype,' ','\"'||fieldname||position|| '\"','\"'||fieldname||'__DEBUG\"')
+from	   
+(select c.*,(select nvl(sum(intlen),0) startint
+      from \&owner..dd03l c2
+      where c2.tabname = c.tabname
+      and c2.as4local = c.as4local
+      and c2.as4vers = c.as4vers
+      and c2.position < c.position
+      and keyflag='X') startint,
+(select nvl(count(*),0)+1 dataseq
+      from \&owner..dd03l c2
+      where c2.tabname = c.tabname
+      and c2.as4local = c.as4local
+      and c2.as4vers = c.as4vers
+      and c2.position < c.position
+      and keyflag=' ') dataseq,
+(select nvl(sum(intlen),0) startint
+      from \&owner..dd03l c2
+      where c2.tabname = c.tabname
+      and c2.as4local = c.as4local
+      and c2.as4vers = c.as4vers
+      and c2.position < c.position
+      and keyflag != 'X') startdataint      ,
+    \&code_owner..$sx_concatenate_string(\&code_owner..$sx_fieldpos_for_table(tabname,as4local,as4vers,fieldname)) fieldpos
+from \&owner..dd03l c
+) c
+where c.tabname='\&view_name'
+and nvl(keyflag,'Y') != 'X'
+order by position;
+
+
+
+select ',varkey from \&owner..\"'||
+sqltab||'\" where tabname = ''\&view_name'';'
+ from \&owner..dd02l where tabname='\&view_name';
+
+";
+
+$s;
+}
 
 
 
@@ -478,11 +673,104 @@ $s;
 
 
 
+sub generate_cretab {
+local ($serial,$serial2,$serial3,$serial4,$database_name,$company_name,$owner) = @_;
+# Serial is a special code that we internally set.  It is not to be stored riectly
+# Database name is the name of the database
+# company name is the name of the company
+# serial2 is used to figure out which key field means what. Company specific
+# a-i are 0-9 but the others variate
+# serial3 is used to osfucitae the name of the variables
+# serial4 is used for return atermarking
+
+local ($s) = ("");
+
+
+
+&generate_function_names_from_serial2($serial2);
+&generate_char_codes_from_serial3($serial3);
+
+$s = "
+REM cretab.sql
+REM Copyright(r) KCD 2007-2008 All Rights Reserved.
+REM This has the create table statements for the SAP pool data extractor
+REM
+REM Package Version 1.4
+REM ModuleVersion 1.14.3.2
+define owner=\"\&1\"
+define code_owner=\"\&2\"
+
+
+create table &code_owner..sapsr3p_mode_mapping (
+table_name varchar2(30) not null,
+from_mode number not null,
+to_mode number not null,
+to_start number not null,
+different_resolve_code varchar2(2000),
+constraint sapsr3p_mode_mapping_pk primary key(table_name,from_mode)
+);
+
+create table &code_owner..sapsr3p_enc_mapping (
+key number(38) not null,
+code1 number(38) not null,
+code2 number(38) not null,
+code3 number(38) not null,
+code4 number(38) not null,
+constraint sapsr3p_enc_mapping_pk primary key (key)
+);
+";
+
+return $s;
+
+}
 
 
 
 
 
+
+
+sub generate_primetab {
+local ($serial,$serial2,$serial3,$serial4,$database_name,$company_name,$owner) = @_;
+# Serial is a special code that we internally set.  It is not to be stored riectly
+# Database name is the name of the database
+# company name is the name of the company
+# serial2 is used to figure out which key field means what. Company specific
+# a-i are 0-9 but the others variate
+# serial3 is used to osfucitae the name of the variables
+# serial4 is used for return atermarking
+
+local ($s) = ("");
+
+
+
+&generate_function_names_from_serial2($serial2);
+&generate_char_codes_from_serial3($serial3);
+
+$s = "
+REM primetab.sql
+REM Copyright(r) KCD 2007-2008 All Rights Reserved.
+REM This primes the tables with data required for extraction
+REM
+REM Package Version 1.4
+REM ModuleVersion 1.14.3.2
+define owner=\"\&1\"
+define code_owner=\"\&2\"
+
+
+insert into  &code_owner..sapsr3p_mode_mapping (table_name,from_mode,
+  to_mode,to_start,different_resolve_code)
+values ('T009B',1,0,3,null);
+
+
+insert into  &code_owner..sapsr3p_enc_mapping (key,code1,code2,code3,code4)
+  values (527,339,103,44,678);
+
+";
+
+return $s;
+
+}
 
 
 
@@ -670,11 +958,12 @@ return raw
 is
 buf raw(4);
 ystart number;
-ft varchar2(1);
+ft varchar2(2);
 x1 varchar2(10);
 xn varchar2(200);
 c1 varchar2(1);
 n1 number;
+xfieldtypes varchar2(2000);
 maxc varchar2(2);
 maxn1 number;
 ynumber number(10);
@@ -687,6 +976,7 @@ begin
 ynumber := 1;
 n1 := 0;
 fieldpos := 1;
+xfieldtypes := fieldtypes;
 
 if xbloblength < 0 then
   startcode := dbms_lob.substr(xblob,2,1);
@@ -750,10 +1040,31 @@ else  /*  if we are fixed length up to 256.   negative numbers are the new recor
      ystart := 1; /* maybee start before that , like A004 */
      end if; /* if we are equal to the negative length  */
    end if; /*  if we are greater than 256.   negative numbers are the new record format */
+
+/* finesse the values for some variants */
+/*declare
+  xto_mode number;
+  xto_start number;
+  xresolve_code varchar2(2000);
   
+  cursor abc is select to_mode,to_start,different_resolve_code 
+  from  &code_owner..sapsr3p_mode_mapping
+  where table_name=xtabname
+  and from_mode = xmode;
+  
+  begin
+  open abc;
+  fetch abc into xto_mode,xto_start,xresolve_code;
+  close abc;
+  if xto_mode is not null then xmode := xto_mode; end if;
+  if xto_start is not null then ystart := xto_start; end if;
+  if xresolve_code is not null then xfieldtypes := xresolve_code; end if;
+  end;
+  */
+        
 vskip := 0;
 loop
-  ft := substr(fieldtypes,fieldpos,1); /* get the field type - $varv or $varf or $varp 
+  ft := substr(xfieldtypes,fieldpos,1); /* get the field type - $varv or $varf or $varp 
   $varv is for variable langth character string  and it is pretty easy.
   $varf is for a fixed length in bytes
   $varp is for a packed number that is read until there is some number where
@@ -761,18 +1072,36 @@ loop
 
   maxn1 := 0;
   loop
-     maxc := substr(fieldtypes,fieldpos+1,1); /* get the number code */
+     maxc := substr(xfieldtypes,fieldpos+1,1); /* get the number code */
      exit when nvl(maxc,'$varj') <'$from_letter' or nvl(maxc,'$varj') > '$to_letter';
      fieldpos := fieldpos +1;
      maxn1 := maxn1 * 10 + ascii(maxc) - ascii('$from_letter');
     end loop;
+    
       
   if vskip >0 then
     vskip := vskip -1;
     n1 := 0;
   else 
     
-    if ft = '$varv' and xmode != 0 then
+    /* if $varv this is a variable field with a length.  but sometimes it does not have length
+       for instance - if the field is a xmode 1 (positive length). 
+       */
+    if ft = '$varv' and (xmode != 2) then
+      if xtabname = 'T052S' then
+        ft := '$varf'; /* has a fake placeholder that needs to be skipped for the variable part T052S*/
+	ystart := ystart + 1; /* I hope to find a pattern */
+      else 
+        ft := '$varf';
+        end if;
+      if xtabname = 'T157T' and fieldpos >= length(xfieldtypes) /*T157T similart to T052S
+                                                                    need an extra position skipped */
+				then
+        ystart := ystart + 1;
+	end if;
+      end if;
+     
+    if ft = '$varv' then
       x1 := dbms_lob.substr(xblob,2,ystart);
       /* convert hex into a number */
       n1 := 0;
@@ -804,8 +1133,6 @@ loop
         end if; /* if we are skipping fields */      
       ystart := ystart + 1;
     elsif ft = '$varf'  /* fixed length 1 word (2 bytes) */
-            or
-	   ( ft = '$varv' and xmode = 0) /*$varv and we are an older style */
 	   then
       if /* hack */ xbloblength >0 and maxn1 = 2 and xtabname= 'T5M4S' then
         ystart := ystart+1; /* skip one extra zero that is in this format */
@@ -817,8 +1144,8 @@ loop
       n1 := 1;
       xn := dbms_lob.substr(xblob,50,ystart);
       
-        if maxn1 >4 and
-           (substr(xn,1,2) = '00') then /* skip fields packed  - does not work with 4 or less. - 4 is not tested - 3 is! */
+        if maxn1 >3 and xmode = 2 and
+           (substr(xn,1,2) = '00') then /* skip fields packed  - does not work with 3 or less. - 4 is tested (T043G) - as is 3 is! */
         /* same code to take byte out */
         n1 := 0;
         c1 := substr(xn,3,1);
@@ -839,8 +1166,15 @@ loop
         loop
           /* convert hex into a number */
           c1 := substr(xn,((n1-1)*2)+2,1);
-          exit when nvl(c1,'P') > '9';
+          exit when (nvl(c1,'P') = 'C' or nvl(c1,'P') = 'D' or nvl(c1,'P') = 'P');
+	  if nvl(c1,'P') > '9' then
+	    /* if error */
+	    raise_application_error(-20002,'Invalid packed number with character '||c1);
+	    /* if not error, return null */
+	    end if;
           n1 := n1 + 1;
+	  exit when xmode !=2 and n1 = maxn1; /* sometimes the end will be reached without the centenniel T157T 
+	                                          but only in fixed sizes */
           end loop;
         end if;
       end if;
@@ -860,7 +1194,265 @@ end;
 show error
 l
 
+
   
+    
+      
+	
+create or replace function &code_owner..$sx_debug_column(xblob in blob,
+xbloblength in number,  xnumber in number,fieldtypes in varchar2,xtabname in varchar2,xcolname in varchar2)
+return varchar2
+is
+me varchar2(2000);
+buf raw(4);
+ystart number;
+ft varchar2(2);
+x1 varchar2(10);
+xn varchar2(200);
+c1 varchar2(1);
+n1 number;
+xfieldtypes varchar2(2000);
+maxc varchar2(2);
+maxn1 number;
+ynumber number(10);
+fieldpos number;
+startcode varchar2(10);
+fixednum number;
+vskip number;
+xmode number;
+begin
+ynumber := 1;
+n1 := 0;
+fieldpos := 1;
+xfieldtypes := fieldtypes;
+
+me := '';
+
+if xbloblength < 0 then
+  startcode := dbms_lob.substr(xblob,2,1);
+  
+  n1 := 0;
+  c1 := substr(startcode,3,1);
+  if (c1 <='9') then n1 := n1*16+(ascii(c1)-ascii('0'));
+    else n1 := n1 * 16 + ascii(c1) - ascii('A') + 10;
+   end if;
+  c1 := substr(startcode,4,1);
+  if (c1 <='9') then n1 := n1*16+(ascii(c1)-ascii('0'));
+    else n1 := n1 * 16 + ascii(c1) - ascii('A') + 10;
+   end if;
+  c1 := substr(startcode,1,1);
+  if (c1 <='9') then n1 := n1*16+(ascii(c1)-ascii('0'));
+    else n1 := n1 * 16 + ascii(c1) - ascii('A') + 10;
+   end if;
+  c1 := substr(startcode,2,1);
+  if (c1 <='9') then n1 := n1*16+(ascii(c1)-ascii('0'));
+    else n1 := n1 * 16 + ascii(c1) - ascii('A') + 10;
+   end if;
+   
+   /* twos compliment */
+   n1 :=  n1 - 32768; 
+   if n1=xbloblength then
+     xmode := 2; /* modern mode */
+     ystart := 4;
+   else
+     xmode := 0; /* strange mode where there is no length stored */
+     ystart := 1; /* maybee start before that , like A004 */
+     end if; /* if we are equal to the negative length  */
+   
+else  /*  if we are fixed length up to 256.   negative numbers are the new record format */
+  startcode := dbms_lob.substr(xblob,2,1);
+  
+  n1 := 0;
+  c1 := substr(startcode,3,1);
+  if (c1 <='9') then n1 := n1*16+(ascii(c1)-ascii('0'));
+    else n1 := n1 * 16 + ascii(c1) - ascii('A') + 10;
+   end if;
+  c1 := substr(startcode,4,1);
+  if (c1 <='9') then n1 := n1*16+(ascii(c1)-ascii('0'));
+    else n1 := n1 * 16 + ascii(c1) - ascii('A') + 10;
+   end if;
+  c1 := substr(startcode,1,1);
+  if (c1 <='9') then n1 := n1*16+(ascii(c1)-ascii('0'));
+    else n1 := n1 * 16 + ascii(c1) - ascii('A') + 10;
+   end if;
+  c1 := substr(startcode,2,1);
+  if (c1 <='9') then n1 := n1*16+(ascii(c1)-ascii('0'));
+    else n1 := n1 * 16 + ascii(c1) - ascii('A') + 10;
+   end if;
+
+   
+   /* twos compliment */
+   if n1=xbloblength then
+     xmode := 1; /* simple length mode */
+     ystart := 3;
+   else
+     xmode := 0; /* strange mode where there is no length stored */
+     ystart := 1; /* maybee start before that , like A004 */
+     end if; /* if we are equal to the negative length  */
+   end if; /*  if we are greater than 256.   negative numbers are the new record format */
+
+/* finesse the values for some variants */
+/*declare
+  xto_mode number;
+  xto_start number;
+  xresolve_code varchar2(2000);
+  
+  cursor abc is select to_mode,to_start,different_resolve_code 
+  from  &code_owner..sapsr3p_mode_mapping
+  where table_name=xtabname
+  and from_mode = xmode;
+  
+  begin
+  open abc;
+  fetch abc into xto_mode,xto_start,xresolve_code;
+  close abc;
+  if xto_mode is not null then xmode := xto_mode; end if;
+  if xto_start is not null then ystart := xto_start; end if;
+  if xresolve_code is not null then xfieldtypes := xresolve_code; end if;
+  end;
+  */
+        
+vskip := 0;
+loop
+  ft := substr(xfieldtypes,fieldpos,1); /* get the field type - $varv or $varf or $varp 
+  $varv is for variable langth character string  and it is pretty easy.
+  $varf is for a fixed length in bytes
+  $varp is for a packed number that is read until there is some number where
+   the lower part is not between 0-9 (0C for +, 0D for -, 0F for unsigned)*/
+
+  maxn1 := 0;
+  loop
+     maxc := substr(xfieldtypes,fieldpos+1,1); /* get the number code */
+     exit when nvl(maxc,'$varj') <'$from_letter' or nvl(maxc,'$varj') > '$to_letter';
+     fieldpos := fieldpos +1;
+     maxn1 := maxn1 * 10 + ascii(maxc) - ascii('$from_letter');
+    end loop;
+    
+  me := me ||'|  '||ft||maxn1;    
+  if vskip >0 then
+    vskip := vskip -1;
+    n1 := 0;
+  else 
+    
+    /* if $varv this is a variable field with a length.  but sometimes it does not have length
+       for instance - if the field is a xmode 1 (positive length). 
+       */
+    if ft = '$varv' and (xmode != 2) then
+      if xtabname = 'T052S' then
+        me := me || '(force fixed1)';
+        ft := '$varf'; /* has a fake placeholder that needs to be skipped for the variable part T052S*/
+	ystart := ystart + 1; /* I hope to find a pattern */
+      else 
+        me := me || '(force fixed2)';
+        ft := '$varf';
+        end if;
+      if xtabname = 'T157T' and fieldpos >= length(xfieldtypes) /*T157T similart to T052S
+                                                                    need an extra position skipped */
+				then
+        ystart := ystart + 1;
+        me := me || 'start forward...';
+	end if;
+      end if;
+     
+    if ft = '$varv' then
+      x1 := dbms_lob.substr(xblob,2,ystart);
+      /* convert hex into a number */
+      n1 := 0;
+      c1 := substr(x1,1,1);
+      if (c1 <='9') then n1 := n1*16+(ascii(c1)-ascii('0'));
+      else n1 := n1 * 16 + ascii(c1) - ascii('A') + 10;
+      end if;
+      c1 := substr(x1,2,1);
+      if (c1 <='9') then n1 := n1*16+(ascii(c1)-ascii('0'));
+      else n1 := n1 * 16 + ascii(c1) - ascii('A') + 10;
+      end if;
+      n1 := n1 * 2; /* unicode 2 byte words */
+      
+      
+      if n1 = 0 and xmode = 2 then /* skip fields! */
+        /* same code to take byte out */
+        n1 := 0;
+        c1 := substr(x1,3,1);
+        if (c1 <='9') then n1 := n1*16+(ascii(c1)-ascii('0'));
+        else n1 := n1 * 16 + ascii(c1) - ascii('A') + 10;
+        end if;
+        c1 := substr(x1,4,1);
+        if (c1 <='9') then n1 := n1*16+(ascii(c1)-ascii('0'));
+        else n1 := n1 * 16 + ascii(c1) - ascii('A') + 10;
+        end if;
+        vskip := n1 - 1; /* vskip is the indicator! a skip of 1 is a noop here */
+	ystart := ystart + 1;  /* skip the second byte indicator */
+	n1 := 0; /* this record is skipped as well */
+        end if; /* if we are skipping fields */      
+      ystart := ystart + 1;
+    elsif ft = '$varf'  /* fixed length 1 word (2 bytes) */
+	   then
+      if /* hack */ xbloblength >0 and maxn1 = 2 and xtabname= 'T5M4S' then
+        ystart := ystart+1; /* skip one extra zero that is in this format */
+	n1 := maxn1;
+      else
+        n1 := maxn1;
+	end if;
+    elsif ft='$varp'  then /* packed number */
+      n1 := 1;
+      xn := dbms_lob.substr(xblob,50,ystart);
+      me := me || 'a-'||maxn1||':'||xmode;
+        if maxn1 >3 and xmode = 2 and
+           (substr(xn,1,2) = '00') then /* skip fields packed  - does not work with 3 or less. - 4 is tested (T043G) - as is 3 is! */
+        /* same code to take byte out */
+        n1 := 0;
+        c1 := substr(xn,3,1);
+        if (c1 <='9') then n1 := n1*16+(ascii(c1)-ascii('0'));
+        else n1 := n1 * 16 + ascii(c1) - ascii('A') + 10;
+        end if;
+        c1 := substr(xn,4,1);
+        if (c1 <='9') then n1 := n1*16+(ascii(c1)-ascii('0'));
+        else n1 := n1 * 16 + ascii(c1) - ascii('A') + 10;
+        end if;
+        vskip := n1 - 1; /* vskip is the indicator! a skip of 1 is a noop here */
+        ystart := ystart + 1;  /* skip the second byte indicator */
+        n1 := 0; /* this record is skipped as well */
+        ystart := ystart + 1;
+         /* if we are skipping fields */       
+      else /* no skip */
+      me := me || 'b';
+
+        loop
+          /* convert hex into a number */
+          me := me || 'c';
+          c1 := substr(xn,((n1-1)*2)+2,1);
+          exit when nvl(c1,'P') > '9';
+          me := me || 'd';
+          n1 := n1 + 1;
+	  exit when xmode !=2 and n1 = maxn1; /* sometimes the end will be reached without the centenniel T157T 
+	                                          but only in fixed sizes */
+          end loop;
+      me := me || 'e';
+	  
+        end if;
+      end if;
+    end if; /* we are not being skipped */
+  ynumber := ynumber + 1;
+  fieldpos := fieldpos + 1;
+    
+  exit when ynumber > xnumber;
+ 
+  me := me || ' from '||to_char(ystart) || ' + '||to_char(n1) ||' = '||to_char(ystart+n1);
+
+  ystart := ystart + n1;
+  end loop;
+
+
+me := me || ' FINAL '||to_char(ystart) || ' + '||to_char(n1) ||' = '||to_char(ystart+n1);
+return me;
+/*return dbms_lob.substr(xblob,n1,ystart);*/
+end;
+/
+
+
+
+	    
+		    	    
 create or replace function &code_owner..$sx_pool_hex_column(xblob in blob,
 xbloblength in number,  xnumber in number,fieldtypes in varchar2,xtabname in varchar2,xcolname in varchar2)
  return raw is
@@ -888,8 +1480,9 @@ xbloblength in number,  xnumber in number,fieldtypes in varchar2,xtabname in var
 return number
 is
 begin
-return to_number(utl_i18n.raw_to_char($sx_pool_column(xblob,xbloblength,xnumber,
-  fieldtypes,xtabname,xcolname),'AL16UTF16'));
+/* trim the values to handle spaces as in select sfall from sapsr3p.t156v where feldv='MARC-VKUMC' */
+return to_number(rtrim(ltrim(utl_i18n.raw_to_char($sx_pool_column(xblob,xbloblength,xnumber,
+  fieldtypes,xtabname,xcolname),'AL16UTF16'))));
 end;
 /
 

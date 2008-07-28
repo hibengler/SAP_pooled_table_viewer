@@ -42,3 +42,19 @@ spool z.sqld
 spool off
 @z.sqld
 
+
+
+
+spool v.sqld
+select '@build_pool_debug "'||tabname||'" "&prefix" "&owner" "&code_owner"'  
+from &owner..dd02l
+  where tabclass='POOL' order by tabname,sqltab;
+spool off
+spool w.sqld
+@v.sqld
+spool off
+@w.sqld
+
+
+REM @build_pool_debug "T043G" "" "SAPSR3" "SAPSR3P"
+ 

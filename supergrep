@@ -1,6 +1,9 @@
 grep '|?' list.lst |
- grep -v T048T | grep -v T077Z 
- 
-#   grep -v TCA15 | grep -v TCDOBT | grep -v T048T | grep -v T086T | grep -v T077Z | grep -v T097T | grep -v T536A | grep -v T578A | grep -v T803D | grep -v T803I | grep -v T803B | grep -v T801N |grep -v T801V | grep -v T512I
+ grep -v T048T | grep -v T077Z | grep -v T086T | grep -v T097T | grep -v T512I | grep -v T536A |  grep -v T578A |
+ grep -v T801N|grep -v T801V | grep -v T803B | grep -v T803D  | grep -v T803I | grep -v TCA15| grep -v TCDOBT |
+ grep -v TDCLD | grep -v TDCLT | grep -v TFO05 | grep -v TPAER | grep -v TVARN
+ #???T157T
+#   grep -v TCA15 | grep -v TCDOBT | grep -v T048T | | grep -v T077Z | grep -v T097T 
+# | grep -v T803D | grep -v T803I | grep -v T803B | grep -v T801N |grep -v T801V | grep -v T512I
 #GLSP - nothing there
 
