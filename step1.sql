@@ -51,10 +51,9 @@ from &owner..dd02l
   where tabclass='POOL' order by tabname,sqltab;
 spool off
 spool w.sqld
-@v.sqld
+REM @v.sqld
 spool off
-@w.sqld
+REM @w.sqld
 
 
-REM @build_pool_debug "T043G" "" "SAPSR3" "SAPSR3P"
  

@@ -211,6 +211,7 @@ $sx_pool_time_column  =  $prefix . $pl . "_time_$cl";
 $sx_pool_double_column  =  $prefix . $pl . "_double_$cl" ;
 $sx_pool_float_column  =  $prefix . $pl . "_float_$cl";
 $sx_debug_column = $prefix . $pl . "_" . $debg;
+$sx_dd03l = $prefix . "dd03l";
 }
 
 
@@ -361,8 +362,8 @@ local ($serial,$serial2,$serial3,$serial4,$database_name,$company_name,$owner) =
 local $dbug;
 local ($s) = ("");
 
-#$dbug="\nselect 'dbms_lob.substr(vardata,20,1) zhib,dataln,' from dual;";
-$dbug = ""
+$dbug="\nselect 'dbms_lob.substr(vardata,20,1) zhib,dataln,' from dual;";
+#$dbug = ""
 
 
 &generate_function_names_from_serial2($serial2);
@@ -408,12 +409,12 @@ decode(keyflag,'X',
    decode(inttype,'C','substr(varkey,'||(startint+1)
       ||','||
         to_number(intlen) ||') ',
-	'N','to_number(substr(varkey,'||(startint+1)
+	'N','to_number(rtrim(ltrim(substr(varkey,'||(startint+1)
       ||','||
-        to_number(intlen)||')) ',
-'D','to_date(substr(varkey,'||(startint+1)
+        to_number(intlen)||')))) ',
+'D'/*was to_date but failed due to T056F */,'(substr(varkey,'||(startint+1)
       ||','||
-              to_number(intlen)||'),''YYYYMMDD'') ',
+              to_number(intlen)||')) ',
 'substr(varkey,'||(startint+1)
       ||','||
         to_number(intlen) ||') '	      
@@ -440,28 +441,28 @@ decode(keyflag,'X',
 	   || decode(inttype,' ','\"'||fieldname||position|| '\"','\"'||fieldname||'\"')
 from	   
 (select c.*,(select nvl(sum(intlen),0) startint
-      from \&owner..dd03l c2
+      from \&code_owner..$sx_dd03l c2
       where c2.tabname = c.tabname
       and c2.as4local = c.as4local
       and c2.as4vers = c.as4vers
       and c2.position < c.position
       and keyflag='X') startint,
 (select nvl(count(*),0)+1 dataseq
-      from \&owner..dd03l c2
+      from \&code_owner..$sx_dd03l c2
       where c2.tabname = c.tabname
       and c2.as4local = c.as4local
       and c2.as4vers = c.as4vers
       and c2.position < c.position
       and keyflag=' ') dataseq,
 (select nvl(sum(intlen),0) startint
-      from \&owner..dd03l c2
+      from \&code_owner..$sx_dd03l c2
       where c2.tabname = c.tabname
       and c2.as4local = c.as4local
       and c2.as4vers = c.as4vers
       and c2.position < c.position
       and keyflag != 'X') startdataint      ,
     \&code_owner..$sx_concatenate_string(\&code_owner..$sx_fieldpos_for_table(tabname,as4local,as4vers,fieldname)) fieldpos
-from \&owner..dd03l c
+from \&code_owner..$sx_dd03l c
 ) c
 where c.tabname='\&view_name'
 order by position;
@@ -496,6 +497,12 @@ local $dbug;
 local ($s) = ("");
 
 $dbug="\nselect 'dbms_lob.substr(vardata,40,1) zhib,dataln,' from dual;";
+$dbug .="\nselect \&code_owner..$sx_concatenate_string(\&code_owner..$sx_fieldpos_for_table('\&view_name',as4local,as4vers,fieldname))||'   zfp,'  
+from \&code_owner..$sx_dd03l c
+where c.tabname='\&view_name'
+and rownum<2;";
+
+
 # $dbug = ""
 
 
@@ -546,12 +553,12 @@ decode(keyflag,'X',
    decode(inttype,'C','substr(varkey,'||(startint+1)
       ||','||
         to_number(intlen) ||') ',
-	'N','to_number(substr(varkey,'||(startint+1)
+	'N','to_number(rtrim(ltrim(substr(varkey,'||(startint+1)
       ||','||
-        to_number(intlen)||')) ',
-'D','to_date(substr(varkey,'||(startint+1)
+        to_number(intlen)||')))) ',
+'D','(substr(varkey,'||(startint+1)
       ||','||
-              to_number(intlen)||'),''YYYYMMDD'') ',
+              to_number(intlen)||')) ',
 'substr(varkey,'||(startint+1)
       ||','||
         to_number(intlen) ||') '	      
@@ -577,28 +584,28 @@ decode(keyflag,'X',
 	   || decode(inttype,' ','\"'||fieldname||position|| '\"','\"'||fieldname||'\"')
 from	   
 (select c.*,(select nvl(sum(intlen),0) startint
-      from \&owner..dd03l c2
+      from \&code_owner..$sx_dd03l c2
       where c2.tabname = c.tabname
       and c2.as4local = c.as4local
       and c2.as4vers = c.as4vers
       and c2.position < c.position
       and keyflag='X') startint,
 (select nvl(count(*),0)+1 dataseq
-      from \&owner..dd03l c2
+      from \&code_owner..$sx_dd03l c2
       where c2.tabname = c.tabname
       and c2.as4local = c.as4local
       and c2.as4vers = c.as4vers
       and c2.position < c.position
       and keyflag=' ') dataseq,
 (select nvl(sum(intlen),0) startint
-      from \&owner..dd03l c2
+      from \&code_owner..$sx_dd03l c2
       where c2.tabname = c.tabname
       and c2.as4local = c.as4local
       and c2.as4vers = c.as4vers
       and c2.position < c.position
       and keyflag != 'X') startdataint      ,
     \&code_owner..$sx_concatenate_string(\&code_owner..$sx_fieldpos_for_table(tabname,as4local,as4vers,fieldname)) fieldpos
-from \&owner..dd03l c
+from \&code_owner..$sx_dd03l c
 ) c
 where c.tabname='\&view_name'
 order by position;
@@ -627,28 +634,28 @@ select
 	   || decode(inttype,' ','\"'||fieldname||position|| '\"','\"'||fieldname||'__DEBUG\"')
 from	   
 (select c.*,(select nvl(sum(intlen),0) startint
-      from \&owner..dd03l c2
+      from \&code_owner..$sx_dd03l c2
       where c2.tabname = c.tabname
       and c2.as4local = c.as4local
       and c2.as4vers = c.as4vers
       and c2.position < c.position
       and keyflag='X') startint,
 (select nvl(count(*),0)+1 dataseq
-      from \&owner..dd03l c2
+      from \&code_owner..$sx_dd03l c2
       where c2.tabname = c.tabname
       and c2.as4local = c.as4local
       and c2.as4vers = c.as4vers
       and c2.position < c.position
       and keyflag=' ') dataseq,
 (select nvl(sum(intlen),0) startint
-      from \&owner..dd03l c2
+      from \&code_owner..$sx_dd03l c2
       where c2.tabname = c.tabname
       and c2.as4local = c.as4local
       and c2.as4vers = c.as4vers
       and c2.position < c.position
       and keyflag != 'X') startdataint      ,
     \&code_owner..$sx_concatenate_string(\&code_owner..$sx_fieldpos_for_table(tabname,as4local,as4vers,fieldname)) fieldpos
-from \&owner..dd03l c
+from \&code_owner..$sx_dd03l c
 ) c
 where c.tabname='\&view_name'
 and nvl(keyflag,'Y') != 'X'
@@ -701,23 +708,40 @@ define owner=\"\&1\"
 define code_owner=\"\&2\"
 
 
-create table &code_owner..sapsr3p_mode_mapping (
-table_name varchar2(30) not null,
-from_mode number not null,
-to_mode number not null,
-to_start number not null,
-different_resolve_code varchar2(2000),
-constraint sapsr3p_mode_mapping_pk primary key(table_name,from_mode)
+create table &code_owner..ptv_dd03l_patch (
+tabname varchar2(90) not null,
+fieldname varchar2(90) not null,
+operation varchar(3) not null,
+id number  not null,
+the_date date not null,
+notes varchar2(2000),
+bugid varchar2(20),
+position varchar2(12),
+keyflag varchar2(3),
+inttype varchar2(3),
+intlen varchar2(18),
+datatype varchar2(12),
+leng varchar2(18),
+decimals varchar2(18),
+constraint ptv_dd03l_patch_pk primary key(id),
+constraint ptv_dd03l_patch_uk unique (tabname,fieldname),
+constraint ptv_dd03l_patch_ck1 check (operation in ('INS','UPD','DEL'))
 );
 
-create table &code_owner..sapsr3p_enc_mapping (
-key number(38) not null,
-code1 number(38) not null,
-code2 number(38) not null,
-code3 number(38) not null,
-code4 number(38) not null,
-constraint sapsr3p_enc_mapping_pk primary key (key)
+create table &code_owner..ptv_dd03l_current_versions (
+as4local varchar2(3) not null,
+as4vers varchar2(12) not null,
+constraint ptv_dd03l_current_version_pk primary key (as4local,as4vers)
 );
+
+create table &code_owner..ptv_license_entry (
+entity_id number,
+serial_id number not null,
+daycode number not null,
+mung number,
+constraint ptv_license_entry_pk primary key (daycode,serial_id)
+);
+
 ";
 
 return $s;
@@ -757,14 +781,45 @@ REM ModuleVersion 1.14.3.2
 define owner=\"\&1\"
 define code_owner=\"\&2\"
 
+delete from  &code_owner..ptv_dd03l_patch where id<100;
+delete from  &code_owner..ptv_dd03l_current_versions;
 
-insert into  &code_owner..sapsr3p_mode_mapping (table_name,from_mode,
-  to_mode,to_start,different_resolve_code)
-values ('T009B',1,0,3,null);
+insert into  &code_owner..ptv_dd03l_current_versions(as4local,as4vers) select distinct as4local,as4vers
+from &owner..dd06t;
 
 
-insert into  &code_owner..sapsr3p_enc_mapping (key,code1,code2,code3,code4)
-  values (527,339,103,44,678);
+insert into  &code_owner..ptv_dd03l_patch (
+tabname,
+fieldname,
+operation,
+id,
+the_date,
+notes,
+bugid,
+position,
+keyflag,
+inttype,
+intlen,
+datatype,
+leng,
+decimals
+)
+values (
+ 'TFB03T',
+ 'FIVOR',
+ 'UPD',
+ 1,
+ to_date('01-aug-08','dd-mon-rr'),
+ 'Gets an ORA-01722 error on base testing.',
+ 'A-001',
+ '0003',
+ 'X',
+ 'C',
+ null,
+ 'CHAR',
+ null,
+ null
+ );
 
 ";
 
@@ -821,6 +876,7 @@ REM
 REM Objects created:
 REM the following objects are created by this code:
 REM
+REM View $sx_dd03l
 REM $sx_fieldpos_for_table
 REM $sx_raw_packed_to_number
 REM $sx_pool_column
@@ -846,6 +902,41 @@ REM
 REM  
 define owner=\"\&1\"
 define code_owner=\"\&2\"
+
+
+
+create or replace view &code_owner..$sx_dd03l
+as
+select d.tabname,d.fieldname,d.as4vers,d.as4local,
+nvl(c.position,d.position) position,
+decode(c.id,null,d.keyflag,c.keyflag) keyflag,
+nvl(c.inttype,d.inttype) inttype,
+nvl(c.intlen,d.intlen) intlen,
+nvl(c.datatype,d.datatype) datatype,
+nvl(c.leng,d.leng) leng,
+nvl(c.decimals,d.decimals) decimals
+from &owner..dd03l d,
+  &code_owner..ptv_dd03l_patch c
+where c.tabname (+) = d.tabname
+  and c.fieldname (+) = d.fieldname
+  and nvl(c.operation,'UPD') ='UPD'
+union all
+select c.tabname,c.fieldname,e.as4vers,e.as4local,
+c.position,
+c.keyflag,
+c.inttype,
+c.intlen,
+c.datatype,
+c.leng,
+c.decimals
+from &code_owner..ptv_dd03l_patch c,
+ &code_owner..ptv_dd03l_current_versions e
+where c.operation = 'INS'
+;
+
+
+
+
 
 
 create or replace function &code_owner..$sx_number_to_fieldpos(xval in number)
@@ -888,7 +979,7 @@ cursor abc is select decode(inttype,'C',decode(intlen,1,'$varf$two_letter',2,'$v
    ' ','$varf'|| &code_owner..$sx_number_to_fieldpos(intlen*2), 
    'P','$varp'||&code_owner..$sx_number_to_fieldpos(intlen+0), 
    '?') code
- from &owner..dd03l 
+ from &code_owner..$sx_dd03l 
  where tabname = xtabname
  and as4local = xas4local
  and as4vers = xas4vers
@@ -972,6 +1063,7 @@ startcode varchar2(10);
 fixednum number;
 vskip number;
 xmode number;
+extra_add number;
 begin
 ynumber := 1;
 n1 := 0;
@@ -1041,6 +1133,8 @@ else  /*  if we are fixed length up to 256.   negative numbers are the new recor
      end if; /* if we are equal to the negative length  */
    end if; /*  if we are greater than 256.   negative numbers are the new record format */
 
+
+
 /* finesse the values for some variants */
 /*declare
   xto_mode number;
@@ -1063,7 +1157,11 @@ else  /*  if we are fixed length up to 256.   negative numbers are the new recor
   */
         
 vskip := 0;
+extra_add := 0;
 loop
+  ystart := ystart + extra_add;
+  extra_add := 0;
+  
   ft := substr(xfieldtypes,fieldpos,1); /* get the field type - $varv or $varf or $varp 
   $varv is for variable langth character string  and it is pretty easy.
   $varf is for a fixed length in bytes
@@ -1090,15 +1188,12 @@ loop
     if ft = '$varv' and (xmode != 2) then
       if xtabname = 'T052S' then
         ft := '$varf'; /* has a fake placeholder that needs to be skipped for the variable part T052S*/
-	ystart := ystart + 1; /* I hope to find a pattern */
-      else 
+      elsif xtabname='T5D1I' and ynumber in (4,5,6)then /* bug in the layout */
+        ft := '$varf';
+	if (ynumber = 6) then maxn1 := 1; else maxn1 := 2; end if;
+      else
         ft := '$varf';
         end if;
-      if xtabname = 'T157T' and fieldpos >= length(xfieldtypes) /*T157T similart to T052S
-                                                                    need an extra position skipped */
-				then
-        ystart := ystart + 1;
-	end if;
       end if;
      
     if ft = '$varv' then
@@ -1144,7 +1239,7 @@ loop
       n1 := 1;
       xn := dbms_lob.substr(xblob,50,ystart);
       
-        if maxn1 >3 and xmode = 2 and
+      if maxn1 >3 and xmode = 2 and
            (substr(xn,1,2) = '00') then /* skip fields packed  - does not work with 3 or less. - 4 is tested (T043G) - as is 3 is! */
         /* same code to take byte out */
         n1 := 0;
@@ -1176,7 +1271,12 @@ loop
 	  exit when xmode !=2 and n1 = maxn1; /* sometimes the end will be reached without the centenniel T157T 
 	                                          but only in fixed sizes */
           end loop;
-        end if;
+        if(xmode = 1 and mod(maxn1,2) = 1) and
+	    xtabname in ('T5C0P','T5DI1','T052S','T157T')
+              then /* could be mod if n1 I dont know  t5C0P and T5DI1 */
+	  extra_add := 1; /* do not include for return value, just skip to the lou */
+	  end if;
+	end if;
       end if;
     end if; /* we are not being skipped */
   ynumber := ynumber + 1;
@@ -1220,6 +1320,8 @@ startcode varchar2(10);
 fixednum number;
 vskip number;
 xmode number;
+extra_add number;
+
 begin
 ynumber := 1;
 n1 := 0;
@@ -1290,6 +1392,8 @@ else  /*  if we are fixed length up to 256.   negative numbers are the new recor
      ystart := 1; /* maybee start before that , like A004 */
      end if; /* if we are equal to the negative length  */
    end if; /*  if we are greater than 256.   negative numbers are the new record format */
+   
+   
 
 /* finesse the values for some variants */
 /*declare
@@ -1313,7 +1417,11 @@ else  /*  if we are fixed length up to 256.   negative numbers are the new recor
   */
         
 vskip := 0;
+extra_add := 0;
 loop
+  ystart := ystart + extra_add;
+  extra_add := 0;
+  
   ft := substr(xfieldtypes,fieldpos,1); /* get the field type - $varv or $varf or $varp 
   $varv is for variable langth character string  and it is pretty easy.
   $varf is for a fixed length in bytes
@@ -1341,17 +1449,14 @@ loop
       if xtabname = 'T052S' then
         me := me || '(force fixed1)';
         ft := '$varf'; /* has a fake placeholder that needs to be skipped for the variable part T052S*/
-	ystart := ystart + 1; /* I hope to find a pattern */
-      else 
+      elsif xtabname='T5D1I' and ynumber in (4,5,6) then /* bug in the layout */
+        ft := '$varf';
+	if (ynumber = 6) then maxn1 := 1; else maxn1 := 2; end if;
+        me := me|| ' T5D1I2 '||maxn1;
+      else
         me := me || '(force fixed2)';
         ft := '$varf';
         end if;
-      if xtabname = 'T157T' and fieldpos >= length(xfieldtypes) /*T157T similart to T052S
-                                                                    need an extra position skipped */
-				then
-        ystart := ystart + 1;
-        me := me || 'start forward...';
-	end if;
       end if;
      
     if ft = '$varv' then
@@ -1415,7 +1520,7 @@ loop
         ystart := ystart + 1;
          /* if we are skipping fields */       
       else /* no skip */
-      me := me || 'b';
+        me := me || 'b';
 
         loop
           /* convert hex into a number */
@@ -1427,7 +1532,15 @@ loop
 	  exit when xmode !=2 and n1 = maxn1; /* sometimes the end will be reached without the centenniel T157T 
 	                                          but only in fixed sizes */
           end loop;
-      me := me || 'e';
+        me := me || 'e';
+        if(xmode = 1 and mod(maxn1,2) = 1) and
+	    xtabname in ('T5C0P','T5DI1','T052S','T157T')
+              then /* could be mod if n1 I dont know  t5C0P and T5DI1 */
+	  extra_add := 1; /* do not include for return value, just skip to the lou */
+	  me := me ||'X';
+	  else
+	    me := me||'v';
+	  end if;
 	  
         end if;
       end if;
