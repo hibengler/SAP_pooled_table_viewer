@@ -30,7 +30,12 @@ spool off
 
 
 
+
+@cretab "&owner" "&code_owner"
+
 @crecode "&owner" "&code_owner"
+
+@primetab "&owner" "&code_owner"
 
 spool y.sqld
 select '@build_pool_table "'||tabname||'" "&prefix" "&owner" "&code_owner"'  

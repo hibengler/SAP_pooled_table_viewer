@@ -708,7 +708,7 @@ define owner=\"\&1\"
 define code_owner=\"\&2\"
 
 
-create table &code_owner..ptv_dd03l_patch (
+create table &code_owner.." . $prefix . "dd03l_patch (
 tabname varchar2(90) not null,
 fieldname varchar2(90) not null,
 operation varchar(3) not null,
@@ -723,23 +723,23 @@ intlen varchar2(18),
 datatype varchar2(12),
 leng varchar2(18),
 decimals varchar2(18),
-constraint ptv_dd03l_patch_pk primary key(id),
-constraint ptv_dd03l_patch_uk unique (tabname,fieldname),
-constraint ptv_dd03l_patch_ck1 check (operation in ('INS','UPD','DEL'))
+constraint " . $prefix . "dd03l_patch_pk primary key(id),
+constraint " . $prefix . "dd03l_patch_uk unique (tabname,fieldname),
+constraint " . $prefix . "dd03l_patch_ck1 check (operation in ('INS','UPD','DEL'))
 );
 
-create table &code_owner..ptv_dd03l_current_versions (
+create table &code_owner.." . $prefix . "dd03l_current_versions (
 as4local varchar2(3) not null,
 as4vers varchar2(12) not null,
-constraint ptv_dd03l_current_version_pk primary key (as4local,as4vers)
+constraint " . $prefix . "dd03l_current_version_pk primary key (as4local,as4vers)
 );
 
-create table &code_owner..ptv_license_entry (
+create table &code_owner.." . $prefix . "license_entry (
 entity_id number,
 serial_id number not null,
 daycode number not null,
 mung number,
-constraint ptv_license_entry_pk primary key (daycode,serial_id)
+constraint " . $prefix . "license_entry_pk primary key (daycode,serial_id)
 );
 
 ";
@@ -781,14 +781,14 @@ REM ModuleVersion 1.14.3.2
 define owner=\"\&1\"
 define code_owner=\"\&2\"
 
-delete from  &code_owner..ptv_dd03l_patch where id<100;
-delete from  &code_owner..ptv_dd03l_current_versions;
+delete from  &code_owner.." . $prefix . "dd03l_patch where id<100;
+delete from  &code_owner.." . $prefix . "dd03l_current_versions;
 
-insert into  &code_owner..ptv_dd03l_current_versions(as4local,as4vers) select distinct as4local,as4vers
+insert into  &code_owner.." . $prefix . "dd03l_current_versions(as4local,as4vers) select distinct as4local,as4vers
 from &owner..dd06t;
 
 
-insert into  &code_owner..ptv_dd03l_patch (
+insert into  &code_owner.." . $prefix . "dd03l_patch (
 tabname,
 fieldname,
 operation,
@@ -821,6 +821,106 @@ values (
  null
  );
 
+insert into  &code_owner.." . $prefix . "dd03l_patch (
+tabname,
+fieldname,
+operation,
+id,
+the_date,
+notes,
+bugid,
+position,
+keyflag,
+inttype,
+intlen,
+datatype,
+leng,
+decimals
+)
+values (
+ 'T5D1I',
+ 'EHBTR',
+ 'UPD',
+ 2,
+ to_date('01-aug-08','dd-mon-rr'),
+ 'T5D1I has three fields where the length is way bigger in the dictionary than in the raw fields: EHBTR, EMBTR and RTBTR',
+ 'A-002',
+ null,
+ null,
+ null,
+ '000002',
+ null,
+ '000001',
+ null
+ );
+
+insert into  &code_owner.." . $prefix . "dd03l_patch (
+tabname,
+fieldname,
+operation,
+id,
+the_date,
+notes,
+bugid,
+position,
+keyflag,
+inttype,
+intlen,
+datatype,
+leng,
+decimals
+)
+values (
+ 'T5D1I',
+ 'EMBTR',
+ 'UPD',
+ 3,
+ to_date('01-aug-08','dd-mon-rr'),
+ 'T5D1I has three fields where the length is way bigger in the dictionary than in the raw fields: EHBTR, EMBTR and RTBTR',
+ 'A-002',
+ null,
+ null,
+ null,
+ '000002',
+ null,
+ '000001',
+ null
+ );
+
+
+insert into  &code_owner.." . $prefix . "dd03l_patch (
+tabname,
+fieldname,
+operation,
+id,
+the_date,
+notes,
+bugid,
+position,
+keyflag,
+inttype,
+intlen,
+datatype,
+leng,
+decimals
+)
+values (
+ 'T5D1I',
+ 'RTBTR',
+ 'UPD',
+ 4,
+ to_date('01-aug-08','dd-mon-rr'),
+ 'T5D1I has three fields where the length is way bigger in the dictionary than in the raw fields: EHBTR, EMBTR and RTBTR',
+ 'A-002',
+ null,
+ null,
+ null,
+ '000001',
+ null,
+ '000001',
+ null
+ );
+ 
 ";
 
 return $s;
@@ -909,14 +1009,14 @@ create or replace view &code_owner..$sx_dd03l
 as
 select d.tabname,d.fieldname,d.as4vers,d.as4local,
 nvl(c.position,d.position) position,
-decode(c.id,null,d.keyflag,c.keyflag) keyflag,
+nvl(c.keyflag,d.keyflag) keyflag,
 nvl(c.inttype,d.inttype) inttype,
 nvl(c.intlen,d.intlen) intlen,
 nvl(c.datatype,d.datatype) datatype,
 nvl(c.leng,d.leng) leng,
 nvl(c.decimals,d.decimals) decimals
 from &owner..dd03l d,
-  &code_owner..ptv_dd03l_patch c
+  &code_owner.." . $prefix . "dd03l_patch c
 where c.tabname (+) = d.tabname
   and c.fieldname (+) = d.fieldname
   and nvl(c.operation,'UPD') ='UPD'
@@ -929,8 +1029,8 @@ c.intlen,
 c.datatype,
 c.leng,
 c.decimals
-from &code_owner..ptv_dd03l_patch c,
- &code_owner..ptv_dd03l_current_versions e
+from &code_owner.." . $prefix . "dd03l_patch c,
+ &code_owner.." . $prefix . "dd03l_current_versions e
 where c.operation = 'INS'
 ;
 
@@ -1186,14 +1286,7 @@ loop
        for instance - if the field is a xmode 1 (positive length). 
        */
     if ft = '$varv' and (xmode != 2) then
-      if xtabname = 'T052S' then
-        ft := '$varf'; /* has a fake placeholder that needs to be skipped for the variable part T052S*/
-      elsif xtabname='T5D1I' and ynumber in (4,5,6)then /* bug in the layout */
-        ft := '$varf';
-	if (ynumber = 6) then maxn1 := 1; else maxn1 := 2; end if;
-      else
-        ft := '$varf';
-        end if;
+      ft := '$varf';
       end if;
      
     if ft = '$varv' then
@@ -1446,17 +1539,8 @@ loop
        for instance - if the field is a xmode 1 (positive length). 
        */
     if ft = '$varv' and (xmode != 2) then
-      if xtabname = 'T052S' then
-        me := me || '(force fixed1)';
-        ft := '$varf'; /* has a fake placeholder that needs to be skipped for the variable part T052S*/
-      elsif xtabname='T5D1I' and ynumber in (4,5,6) then /* bug in the layout */
-        ft := '$varf';
-	if (ynumber = 6) then maxn1 := 1; else maxn1 := 2; end if;
-        me := me|| ' T5D1I2 '||maxn1;
-      else
-        me := me || '(force fixed2)';
-        ft := '$varf';
-        end if;
+      me := me || '(force fixed)';
+      ft := '$varf'; /* has a fake placeholder that needs to be skipped for the variable part T052S*/
       end if;
      
     if ft = '$varv' then
