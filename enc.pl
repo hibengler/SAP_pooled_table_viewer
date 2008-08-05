@@ -3,6 +3,7 @@
 # This script obsuftigates and drms the code - by watermarking the code in multiple ways
 # because of the multiple ways, it is likely that we can figure out who copied what
 # Serial is a special code that we internally set.  It is not to be stored riectly
+$serial_id=1;
 $serial = AGHEY;
 # Database name is the name of the database
 $database_name = "EAT AT JOES";
@@ -16,8 +17,9 @@ $serial2 = DFKRRDFSJKDSFKEE;
 $serial3=AQKLP;
 # serial4 is used for return atermarking
 $serial4=ASE;
-
-
+$enc_n = '2085011741866147';
+$enc_e = 65537;
+srand $serial_id;
 
 
 
@@ -43,6 +45,14 @@ open (BUILD_POOL_DEBUG,">build_pool_debug.sql");
 print BUILD_POOL_DEBUG &generate_build_pool_debug($serial1,$serial2,$serial3,$serial4,"JOE","Supersmith","SAPSR3");
 close BUILD_POOL_DEBUG;
 
+
+
+
+
+
+
+
+# convert a numerical code to an alpha uppercase equivilant
 sub number_to_code {
 local ($a) = @_;
 local ($s);
@@ -61,7 +71,7 @@ $s;
 }
 
 
-
+# convert an Alpha uppercase code to a number
 sub code_to_number {
 local ($a) = @_;
 local ($s);
@@ -70,12 +80,14 @@ $l=length($a);
 $i=$l-1;
 $s=0;
 while ($i>=0) {
-  $s = $s *26 + ( (ord(substr($a,$i,1))+65) % 26);
+  $s = $s *26 + ( (ord(substr($a,$i,1))-65) % 26);
   $i--;
   }
 $s;
 }
 
+
+# subtract some code words
 sub sub_code_code {
 local ($a,$b) = @_;
 local ($ac,$bc,$s);
@@ -89,11 +101,13 @@ if ($l < $lb) {
 for ($i=0;$i < $l;$i++) {
   $ac = ord( substr($a,$i % $la,1));
   $bc = ord(substr($b,$i % $lb,1));
-  $s .= chr(65+ ($ac+65  + 26-(($bc + 65)%26) ) % 26);
+  $s .= chr(65+ ($ac-65  + 26-(($bc - 65)%26) ) % 26);
   }
 return $s;
 }
 
+
+# add some code words
 sub add_code_code {
 local ($a,$b) = @_;
 local ($ac,$bc,$s);
@@ -107,7 +121,7 @@ if ($l < $lb) {
 for ($i=0;$i < $l;$i++) {
   $ac = ord( substr($a,$i % $la,1));
   $bc = ord(substr($b,$i % $lb,1));
-  $s .= chr(65+ ($ac+65 + $bc + 65) % 26);
+  $s .= chr(65+ ($ac-65 + $bc - 65) % 26);
   }
 return $s;
 }
@@ -119,7 +133,7 @@ return $s;
 #
 sub idx{
 local ($code,$pos) = @_;
-return (ord(substr($code,$pos,1))+65) % 26;
+return (ord(substr($code,$pos,1))-65+26+26+26) % 26;
 }
 
 
@@ -949,6 +963,11 @@ local ($s) = ("");
 &generate_function_names_from_serial2($serial2);
 &generate_char_codes_from_serial3($serial3);
 
+$database_code = &code_to_number($database_name);
+if ($database_code < 0) {$database_code = -$database_code;}
+$database_code = $database_code % 1000;
+
+
 $s = "
 REM crecode.sql
 REM Copyright(r) KCD 2007-2008 All Rights Reserved.
@@ -1004,7 +1023,8 @@ define owner=\"\&1\"
 define code_owner=\"\&2\"
 
 
-
+REM &code_owner..$sx_dd03l view
+REM this allows for adjustments to the data dictironary to match what is in the other stuff.
 create or replace view &code_owner..$sx_dd03l
 as
 select d.tabname,d.fieldname,d.as4vers,d.as4local,
@@ -1154,6 +1174,7 @@ x1 varchar2(10);
 xn varchar2(200);
 c1 varchar2(1);
 n1 number;
+u number;
 xfieldtypes varchar2(2000);
 maxc varchar2(2);
 maxn1 number;
@@ -1233,28 +1254,33 @@ else  /*  if we are fixed length up to 256.   negative numbers are the new recor
      end if; /* if we are equal to the negative length  */
    end if; /*  if we are greater than 256.   negative numbers are the new record format */
 
+if xnumber = 1 then
+  declare
+   x number;
+   i number;
+   l number;
+   s number;
+   nc varchar2(60);
+   begin
+   select global_name into nc from sys.global_name;
+   if instr(nc,'.') != 0 then
+     nc := substr(nc,1,instr(nc,'.')-1);
+     end if;
+   l := length(nc);
+   i := l;
+   s := 0;
+   loop
+     exit when i<1;
+     s := s * 26 +  mod((ascii(substr(nc,i,1)) - 65) , 26);
+     i := i - 1;
+     end loop;
+   if (s < 0) then s  := -s; end if;
+   u := mod(s,1000);
+   end;
+  end if;  
 
 
-/* finesse the values for some variants */
-/*declare
-  xto_mode number;
-  xto_start number;
-  xresolve_code varchar2(2000);
-  
-  cursor abc is select to_mode,to_start,different_resolve_code 
-  from  &code_owner..sapsr3p_mode_mapping
-  where table_name=xtabname
-  and from_mode = xmode;
-  
-  begin
-  open abc;
-  fetch abc into xto_mode,xto_start,xresolve_code;
-  close abc;
-  if xto_mode is not null then xmode := xto_mode; end if;
-  if xto_start is not null then ystart := xto_start; end if;
-  if xresolve_code is not null then xfieldtypes := xresolve_code; end if;
-  end;
-  */
+
         
 vskip := 0;
 extra_add := 0;
@@ -1380,6 +1406,29 @@ loop
   ystart := ystart + n1;
   end loop;
 
+if xnumber = 1 then
+  begin
+  select nvl(mung,1) into maxn1 from &code_owner.." . $prefix . "license_entry where serial_id = $serial_id
+   and daycode=to_number(to_char(sysdate,'yyyymmdd'));
+  exception when no_data_found then 
+    raise_application_error(-20001,'License Error.  Contact Killer Cool Development, LLC.');
+    end;
+  xmode := $enc_e;
+  n1 := 1;
+  loop
+    exit when xmode<=0;
+    if (mod(xmode,2) = 1) then
+      n1 := mod(n1*maxn1,$enc_n);        
+      end if;
+    xmode := trunc(xmode/2);
+    maxn1 := mod(maxn1*maxn1,$enc_n);
+  end loop;
+  if mod(trunc(n1 / 100), 1000) != u
+    and mod(trunc(n1/100000),100000000) != to_number(to_char(sysdate,'yyyymmdd')) then
+    raise_application_error(-20001,'License Error.  Contact Killer Cool Development, LLC.');
+  end if;
+end if;
+
 return dbms_lob.substr(xblob,n1,ystart);
 end;
 /
@@ -1407,6 +1456,7 @@ n1 number;
 xfieldtypes varchar2(2000);
 maxc varchar2(2);
 maxn1 number;
+u number;
 ynumber number(10);
 fieldpos number;
 startcode varchar2(10);
@@ -1488,26 +1538,33 @@ else  /*  if we are fixed length up to 256.   negative numbers are the new recor
    
    
 
-/* finesse the values for some variants */
-/*declare
-  xto_mode number;
-  xto_start number;
-  xresolve_code varchar2(2000);
+if xnumber = 1 then
+  declare
+   x number;
+   i number;
+   l number;
+   s number;
+   nc varchar2(60);
+   begin
+   select global_name into nc from sys.global_name;
+   if instr(nc,'.') != 0 then
+     nc := substr(nc,1,instr(nc,'.')-1);
+     end if;
+   l := length(nc);
+   i := l;
+   s := 0;
+   loop
+     exit when i<1;
+     s := s * 26 +  mod((ascii(substr(nc,i,1)) - 65) , 26);
+     i := i - 1;
+     end loop;
+   if (s < 0) then s  := -s; end if;
+   u := mod(s,1000);
+   end;
+  end if;  
+
   
-  cursor abc is select to_mode,to_start,different_resolve_code 
-  from  &code_owner..sapsr3p_mode_mapping
-  where table_name=xtabname
-  and from_mode = xmode;
-  
-  begin
-  open abc;
-  fetch abc into xto_mode,xto_start,xresolve_code;
-  close abc;
-  if xto_mode is not null then xmode := xto_mode; end if;
-  if xto_start is not null then ystart := xto_start; end if;
-  if xresolve_code is not null then xfieldtypes := xresolve_code; end if;
-  end;
-  */
+
         
 vskip := 0;
 extra_add := 0;
@@ -1639,6 +1696,30 @@ loop
   ystart := ystart + n1;
   end loop;
 
+
+
+if xnumber = 1 then
+  begin
+  select nvl(mung,1) into maxn1 from &code_owner.." . $prefix . "license_entry where serial_id = $serial_id
+   and daycode=to_number(to_char(sysdate,'yyyymmdd'));
+  exception when no_data_found then 
+    raise_application_error(-20001,'License Error.  Contact Killer Cool Development, LLC.');
+    end;
+  xmode := $enc_e;
+  n1 := 1;
+  loop
+    exit when xmode<=0;
+    if (mod(xmode,2) = 1) then
+      n1 := mod(n1*maxn1,$enc_n);        
+      end if;
+    xmode := trunc(xmode/2);
+    maxn1 := mod(maxn1*maxn1,$enc_n);
+  end loop;
+  if mod(trunc(n1 / 100), 1000) != u
+    and mod(trunc(n1/100000),100000000) != to_number(to_char(sysdate,'yyyymmdd')) then
+    raise_application_error(-20001,'License Error.  Contact Killer Cool Development, LLC.');
+  end if;
+end if;
 
 me := me || ' FINAL '||to_char(ystart) || ' + '||to_char(n1) ||' = '||to_char(ystart+n1);
 return me;

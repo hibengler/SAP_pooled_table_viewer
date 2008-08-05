@@ -28,6 +28,8 @@ where tabname like 'DD%');
 spool off
 @x.sqld  
 
+grant select on sys.v_$DATABASE to &code_owner with grant option;
+
 
 
 
