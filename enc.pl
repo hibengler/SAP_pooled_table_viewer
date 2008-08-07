@@ -1,5 +1,41 @@
 #!/usr/bin/perl
+#
+#
 
+use Oraperl;
+eval 'use Oraperl; 1' || die $@ if $] >= 5;
+$ora_long = 1000000000;
+
+require "sql.pl";
+require "fm_tables.pl";
+
+
+
+
+
+#
+# build_code - this does most of the work
+# it creates files
+#
+sub build_code {
+local ($serial_id) = @_;
+
+&fm_tables'login();
+
+($serial_id,$serial,$serial2,$serial3,$serial4,$enc_n,$enc_e,
+$database_name,
+$company_name) = &sql'fetch_row("select serial_id,serial,
+serial2,
+serial3,
+serial4,
+n,
+e,
+database_name,
+company_name
+from kcd_purchased_product
+where serial_id=$serial_id");
+
+srand $serial_id;
 # This script obsuftigates and drms the code - by watermarking the code in multiple ways
 # because of the multiple ways, it is likely that we can figure out who copied what
 # Serial is a special code that we internally set.  It is not to be stored riectly
@@ -7,7 +43,6 @@ $serial_id=1;
 $serial = AGHEY;
 # Database name is the name of the database
 $database_name = "EAT AT JOES";
-$owner = "SAPSR3";
 # company name is the name of the company
 $company_name ='PGP';
 # serial2 is used to figure out which key field means what
@@ -19,7 +54,6 @@ $serial3=AQKLP;
 $serial4=ASE;
 $enc_n = '2085011741866147';
 $enc_e = 65537;
-srand $serial_id;
 
 
 
@@ -29,24 +63,27 @@ srand $serial_id;
 #print STDOUT &number_to_code(223342432) . "\n";
 #print STDOUT &code_to_number(&number_to_code(223342432)) . "\n";
 
-open(CRETAB,">cretab.sql");
-print CRETAB &generate_cretab($serial1,$serial2,$serial3,$serial4,"JOE","Supersmith","SAPSR3"); 
+$builddir="/build/$serial_id";
+system("cp -r /build/0 $builddir");
+
+open(CRETAB,">$builddir/cretab.sql");
+print CRETAB &generate_cretab($serial1,$serial2,$serial3,$serial4,$database_name,$company_name); 
 close CRETAB;
-open(CRECODE,">crecode.sql");
-print CRECODE &generate_crecode($serial1,$serial2,$serial3,$serial4,"JOE","Supersmith","SAPSR3"); 
+open(CRECODE,">$builddir/crecode.sql");
+print CRECODE &generate_crecode($serial1,$serial2,$serial3,$serial4,$database_name,$company_name); 
 close CRECODE;
-open(PRIMETAB,">primetab.sql");
-print PRIMETAB &generate_primetab($serial1,$serial2,$serial3,$serial4,"JOE","Supersmith","SAPSR3"); 
+open(PRIMETAB,">$builddir/primetab.sql");
+print PRIMETAB &generate_primetab($serial1,$serial2,$serial3,$serial4,$database_name,$company_name); 
 close PRIMETAB;
-open (BUILD_POOL_TABLE,">build_pool_table.sql");
-print BUILD_POOL_TABLE &generate_build_pool_table($serial1,$serial2,$serial3,$serial4,"JOE","Supersmith","SAPSR3");
+open (BUILD_POOL_TABLE,">$builddir/build_pool_table.sql");
+print BUILD_POOL_TABLE &generate_build_pool_table($serial1,$serial2,$serial3,$serial4,$database_name,$company_name);
 close BUILD_POOL_TABLE;
-open (BUILD_POOL_DEBUG,">build_pool_debug.sql");
-print BUILD_POOL_DEBUG &generate_build_pool_debug($serial1,$serial2,$serial3,$serial4,"JOE","Supersmith","SAPSR3");
+open (BUILD_POOL_DEBUG,">$builddir/build_pool_debug.sql");
+print BUILD_POOL_DEBUG &generate_build_pool_debug($serial1,$serial2,$serial3,$serial4,$database_name,$company_name);
 close BUILD_POOL_DEBUG;
-
-
-
+open (LICENSECODE,">$builddir/initial_license.sql");
+print LICENSECODE &generate_license_code($serial_id,$database_name,$company_name);
+close LICENSECODE;
 
 
 
@@ -127,6 +164,8 @@ return $s;
 }
 
 
+
+
 # idx 
 # this find the numerical value of an upeprcase ALPHA string at a given position
 # it can handle any streen and returns a number between 0 and 25
@@ -141,7 +180,10 @@ return (ord(substr($code,$pos,1))-65+26+26+26) % 26;
 
 
 
-
+#
+# generate_function_names_from_serial2
+# this helps keep the code varaying from each installation
+#
 sub generate_function_names_from_serial2 
 {
 # serial2 should eb 14 characters long. Company specific
@@ -364,7 +406,7 @@ $extra=  "/* $serial3 */";
 
 
 sub generate_build_pool_table {
-local ($serial,$serial2,$serial3,$serial4,$database_name,$company_name,$owner) = @_;
+local ($serial,$serial2,$serial3,$serial4,$database_name,$company_name) = @_;
 # Serial is a special code that we internally set.  It is not to be stored directly
 # Database name is the name of the database
 # company name is the name of the company
@@ -387,7 +429,7 @@ $s = "
 REM build_pool_table.sql
 REM Copyright(R) Killer Cool Development 2007-2008 All Rights Reserved.
 REM This code has been copyrighted for the company $company_name
-REM For use in the oracle database named $database_name where the SAP tables are in $owner
+REM For use in the oracle database named $database_name
 REM
 REM Package Version 1.4
 REM ModuleVersion 2.1.18.1
@@ -498,7 +540,7 @@ $s;
 
 
 sub generate_build_pool_debug {
-local ($serial,$serial2,$serial3,$serial4,$database_name,$company_name,$owner) = @_;
+local ($serial,$serial2,$serial3,$serial4,$database_name,$company_name) = @_;
 # Serial is a special code that we internally set.  It is not to be stored directly
 # Database name is the name of the database
 # company name is the name of the company
@@ -527,7 +569,7 @@ $s = "
 REM build_pool_debug.sql
 REM Copyright(R) Killer Cool Development 2007-2008 All Rights Reserved.
 REM This code has been copyrighted for the company $company_name
-REM For use in the oracle database named $database_name where the SAP tables are in $owner
+REM For use in the oracle database named $database_name
 REM
 REM Package Version 1.4
 REM ModuleVersion 2.1.18.1
@@ -695,7 +737,7 @@ $s;
 
 
 sub generate_cretab {
-local ($serial,$serial2,$serial3,$serial4,$database_name,$company_name,$owner) = @_;
+local ($serial,$serial2,$serial3,$serial4,$database_name,$company_name) = @_;
 # Serial is a special code that we internally set.  It is not to be stored riectly
 # Database name is the name of the database
 # company name is the name of the company
@@ -769,7 +811,7 @@ return $s;
 
 
 sub generate_primetab {
-local ($serial,$serial2,$serial3,$serial4,$database_name,$company_name,$owner) = @_;
+local ($serial,$serial2,$serial3,$serial4,$database_name,$company_name) = @_;
 # Serial is a special code that we internally set.  It is not to be stored riectly
 # Database name is the name of the database
 # company name is the name of the company
@@ -784,6 +826,8 @@ local ($s) = ("");
 
 &generate_function_names_from_serial2($serial2);
 &generate_char_codes_from_serial3($serial3);
+
+# these are used to cover up the 20001 calls
 
 $s = "
 REM primetab.sql
@@ -946,8 +990,75 @@ return $s;
 
 
 
+
+
+
+#
+# This reads the records in kcd_license_entry and generates a script that will do the insert.
+#
+sub generate_license_code {
+local ($serial_id,$database_name,$company_name) = @_;
+# Serial is a special code that we internally set.  It is not to be stored riectly
+
+local ($mindate,$maxdate) = &sql'fetch_row("select to_char(to_date(min(daycode),'yyyymmdd'),'Month Day, YYYY')
+,max(daycode) from kcd_license_entry where serial_id=$serial_id");
+ 
+
+
+
+local ($s) = ("");
+$s = "REM initial_license.sql
+REM Copyright(R) Killer Cool Development 2007-2008 All Rights Reserved.
+REM This code has been copyrighted for the company $company_name
+REM For use in the oracle database named $database_name
+REM
+REM Package Version 1.4
+REM ModuleVersion 2.1.18.1
+REM 
+REM This script is intended to grant a license for use of the pool table viewer software
+REM from $mindate to $maxdate.
+REM Additional Licensing can be purchased at http://PoolTableViewer.com
+REM
+REM This script will provide licensing 
+REM It takes 1 parameter
+REM
+REM code_owner
+REM This could be 
+REM   SAPSR3 - If you dare to put these views. This is more convienent but less safe.
+REM   SAPSR3P - A separate schema with limited access to only POOL tables and DDL tables. This is more safe.
+REM   another user - If just testing.
+REM owner - the owner of the SAP tables
+REM 
+REM NOTE: This licensing is specific to the database named $database_name
+REM if you intend to use this software on a differently named database,  please contact Killer Cool Development, LLC.
+REM                
+";
+
+$sel = "select entity_id,daycode,mung from kcd_license_entry where serial_id=$serial_id
+  and mung is not null
+  order by daycode";
+$csr = &sql'open($sel);
+while (@row=&sql'fetch($csr)) {
+  local ($entity_id,$daycode,$mung) = @row;
+  if ($entity_id eq "") {$entity_id = "NULL";}
+  
+  $s .= "  delete from &code_owner.." . $prefix . "license_entry where serial_id=$serial_id and daycode=$daycode;
+insert into &code_owner.." . $prefix . "license_entry values ($entity_id,$serial_id,$daycode,$mung);\n";
+  }
+&sql'close($csr);
+
+$s .= "
+REM This is it.  If your lease time has expired,  please contact Killer Cool Development, LLC. for a new lease.
+";
+return $s;
+
+}
+
+
+
+
 sub generate_crecode {
-local ($serial,$serial2,$serial3,$serial4,$database_name,$company_name,$owner) = @_;
+local ($serial,$serial2,$serial3,$serial4,$database_name,$company_name) = @_;
 # Serial is a special code that we internally set.  It is not to be stored riectly
 # Database name is the name of the database
 # company name is the name of the company
@@ -959,6 +1070,10 @@ local ($serial,$serial2,$serial3,$serial4,$database_name,$company_name,$owner) =
 local ($s) = ("");
 
 
+local $r1 = int(rand()*20000);
+$r2 = 20001-$r1;
+local $r3 = int(rand()*20000);
+$r4 = 20001-$r3;
 
 &generate_function_names_from_serial2($serial2);
 &generate_char_codes_from_serial3($serial3);
@@ -972,7 +1087,7 @@ $s = "
 REM crecode.sql
 REM Copyright(r) KCD 2007-2008 All Rights Reserved.
 REM This code has been copyrighted for the company $company_name
-REM For use in the oracle database named $database_name where the SAP tables are in $owner
+REM For use in the oracle database named $database_name
 REM
 REM Package Version 1.4
 REM ModuleVersion 1.14.3.2
@@ -1172,6 +1287,7 @@ ystart number;
 ft varchar2(2);
 x1 varchar2(10);
 xn varchar2(200);
+wow varchar2(40);
 c1 varchar2(1);
 n1 number;
 u number;
@@ -1180,12 +1296,16 @@ maxc varchar2(2);
 maxn1 number;
 ynumber number(10);
 fieldpos number;
+bur varchar2(30);
 startcode varchar2(10);
 fixednum number;
 vskip number;
 xmode number;
 extra_add number;
+oop varchar2(20);
+
 begin
+oop := 'License Error.';
 ynumber := 1;
 n1 := 0;
 fieldpos := 1;
@@ -1255,6 +1375,7 @@ else  /*  if we are fixed length up to 256.   negative numbers are the new recor
    end if; /*  if we are greater than 256.   negative numbers are the new record format */
 
 if xnumber = 1 then
+  bur := 'Contact Killer';
   declare
    x number;
    i number;
@@ -1406,12 +1527,14 @@ loop
   ystart := ystart + n1;
   end loop;
 
+wow := 'Cool Development, LLC.';
+
 if xnumber = 1 then
   begin
   select nvl(mung,1) into maxn1 from &code_owner.." . $prefix . "license_entry where serial_id = $serial_id
    and daycode=to_number(to_char(sysdate,'yyyymmdd'));
   exception when no_data_found then 
-    raise_application_error(-20001,'License Error.  Contact Killer Cool Development, LLC.');
+    raise_application_error(-($r1 + $r2),oop||' '||bur||' '||wow);
     end;
   xmode := $enc_e;
   n1 := 1;
@@ -1425,7 +1548,7 @@ if xnumber = 1 then
   end loop;
   if mod(trunc(n1 / 100), 1000) != u
     and mod(trunc(n1/100000),100000000) != to_number(to_char(sysdate,'yyyymmdd')) then
-    raise_application_error(-20001,'License Error.  Contact Killer Cool Development, LLC.');
+    raise_application_error(-($r3 + $r4),oop||' '||bur||' '||wow);
   end if;
 end if;
 
@@ -1433,8 +1556,6 @@ return dbms_lob.substr(xblob,n1,ystart);
 end;
 /
 
-show error
-l
 
 
   
@@ -1451,6 +1572,7 @@ ystart number;
 ft varchar2(2);
 x1 varchar2(10);
 xn varchar2(200);
+wow varchar2(40);
 c1 varchar2(1);
 n1 number;
 xfieldtypes varchar2(2000);
@@ -1459,13 +1581,16 @@ maxn1 number;
 u number;
 ynumber number(10);
 fieldpos number;
+bur varchar2(30);
 startcode varchar2(10);
 fixednum number;
 vskip number;
 xmode number;
 extra_add number;
+oop varchar2(20);
 
 begin
+oop := 'License Error.';
 ynumber := 1;
 n1 := 0;
 fieldpos := 1;
@@ -1539,6 +1664,7 @@ else  /*  if we are fixed length up to 256.   negative numbers are the new recor
    
 
 if xnumber = 1 then
+  bur := 'Contact Killer';
   declare
    x number;
    i number;
@@ -1696,14 +1822,14 @@ loop
   ystart := ystart + n1;
   end loop;
 
-
+wow := 'Cool Development, LLC.';
 
 if xnumber = 1 then
   begin
   select nvl(mung,1) into maxn1 from &code_owner.." . $prefix . "license_entry where serial_id = $serial_id
    and daycode=to_number(to_char(sysdate,'yyyymmdd'));
   exception when no_data_found then 
-    raise_application_error(-20001,'License Error.  Contact Killer Cool Development, LLC.');
+    raise_application_error(-($r1 + $r2),oop||' '||bur||' '||wow);
     end;
   xmode := $enc_e;
   n1 := 1;
@@ -1717,7 +1843,7 @@ if xnumber = 1 then
   end loop;
   if mod(trunc(n1 / 100), 1000) != u
     and mod(trunc(n1/100000),100000000) != to_number(to_char(sysdate,'yyyymmdd')) then
-    raise_application_error(-20001,'License Error.  Contact Killer Cool Development, LLC.');
+    raise_application_error(-($r3 + $r4),oop||' '||bur||' '||wow);
   end if;
 end if;
 
