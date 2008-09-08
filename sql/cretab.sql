@@ -4,8 +4,15 @@ description varchar2(200) not null unique,
 url varchar2(200) not null)
 /
 
+create table kcd_business_entity (
+entity_id number not null primary key,
+entity_name varchar2(200) not null unique
+)
+/
+
 create table kcd_purchased_product (
 serial_id number not null primary key,
+entity_id number not null references kcd_business_entity(entity_id),
 product_id number not null references kcd_product(product_id),
 p number,
 q number,
@@ -24,11 +31,6 @@ notes varchar2(2000)
 )
 /
 
-create table kcd_business_entity (
-entity_id number not null primary key,
-entity_name varchar2(200) not null unique
-)
-/
 create table kcd_license_entry (
 entity_id number references kcd_business_entity(entity_id),
 serial_id number references kcd_purchased_product(serial_id),

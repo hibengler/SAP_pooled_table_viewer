@@ -31,7 +31,7 @@ return number
 is
 xx number;
 begin
-xx := trunc(dbms_random.value * (max_value - min_value));
+xx := trunc(dbms_random.value * (max_value - min_value))+min_value;
 if mod(xx,2) = 0 then xx := xx + 1; end if;
 loop
   exit when kcd_is_prime(xx)=1;
@@ -163,7 +163,7 @@ xresource number;
 
 begin
 from_range := 12800000;
-to_range := 65534009;
+to_range   := 65534009;
 
 loop
   loop
@@ -278,18 +278,156 @@ loop
 end;
 /
 
+
+
 create or replace procedure kcd_set_purchase_param (
   xserial_id number,
   xdatabase_name varchar2,
   xowner varchar2,
   xcompany_name varchar2)
 is
+xserial varchar2(5);
+xserial2 varchar2(16);
+xserial3 varchar2(5);
+xserial4 varchar2(3);
+j varchar2(1);
+begin
+xserial := dbms_random.string('',5);
+xserial2 := dbms_random.string('',16);
+xserial4 :=  dbms_random.string('',3);
+
+/* serial3 is special - because the first random character needs to be between a-Q - and then then other random characters
+  need to be around a 10 character block 
+  Also - the next set of letters need to be random */
+loop 
+  xserial3 := dbms_random.string('',1);
+  exit when xserial >='A' and xserial3 <='Q';
+end loop;
+
+loop
+  j := dbms_random.string('',1);
+  exit when j< substr(xserial3,1,1) or j >  chr(ascii(substr(xserial3,1,1))+10);
+  /* if outside the 10 character range */
+end loop;
+xserial3 := xserial3 || j;
+
+loop
+  j := dbms_random.string('',1);
+  exit when (j< substr(xserial3,1,1) or j >  chr(ascii(substr(xserial3,1,1))+10))
+      and j != substr(xserial3,2,1);
+  /* if outside the 10 character range */
+end loop;
+xserial3 := xserial3 || j;
+
+loop
+  j := dbms_random.string('',1);
+  exit when (j< substr(xserial3,1,1) or j >  chr(ascii(substr(xserial3,1,1))+10))
+      and j != substr(xserial3,2,1)
+      and j != substr(xserial3,3,1);
+  /* if outside the 10 character range */
+end loop;
+xserial3 := xserial3 || j;
+
+loop
+  j := dbms_random.string('',1);
+  exit when (j< substr(xserial3,1,1) or j >  chr(ascii(substr(xserial3,1,1))+10))
+      and j != substr(xserial3,2,1)
+      and j != substr(xserial3,3,1)
+      and j != substr(xserial3,4,1);
+  /* if outside the 10 character range */
+end loop;
+xserial3 := xserial3 || j;
+
+
 update kcd_purchased_product 
-  set serial=nvl(serial,dbms_random.string('',5)),
+  set serial=nvl(serial,xserial),
       database_name=xdatabase_name,
       owner=xowner,
       company_name=xcompany_name,
-      serial2=nvl(serial2,dbms_random.string('',16))
-      serial3 = *special....
-      ???
+      serial2=nvl(serial2,xserial2),
+      serial3=nvl(serial3,xserial3),
+      serial4=nvl(serial4,xserial4)
+where serial_id = xserial_id;
+end;
+/
+
       
+ 
+
+create or replace procedure kcd_new_purchased_product
+(xserial_id in number,
+xproduct_id in number,
+xcompany_name in varchar2,
+xdatabase_name in varchar2)
+is
+xt number;
+xentity_id number;
+
+cursor a1 is select serial_id from kcd_purchased_product where serial_id=xserial_id;
+
+cursor a2 is select entity_id from kcd_business_entity where entity_name = xcompany_name;
+
+cursor a3 is select product_id from kcd_product where product_id = xproduct_id;
+begin
+
+/* test to see if it is already done */
+xt := null;
+open a1;
+fetch a1 into xt;
+close a1;
+if xt is not null then
+  raise_application_error(-20004,'The serial number '||xserial_id||' is already set and licensed.');
+  end if;
+
+if xcompany_name is null then
+  raise_application_error(-20005,'A Unique Company Name must be filled in.');
+  end if;
+
+if xdatabase_name is null then
+  raise_application_error(-20006,'A database name must be given for licensing.');
+  end if;
+
+
+/* test to see if the product is valid */
+xt := null;
+open a3;
+fetch a3 into xt;
+close a3;
+if xt is null then
+  raise_application_error(-20007,'The Product '||xproduct_id||' is not for sale.');
+  end if;
+
+
+
+/* OK - ready to work. */
+
+/*1. make or find the entity */
+xentity_id := null;
+open a2;
+fetch a2 into xentity_id;
+close a2;
+if xentity_id is null then 
+  select kcd_seq.nextval into xentity_id from dual;
+  insert into kcd_business_entity(entity_id,entity_name)
+    values (xentity_id,xcompany_name);
+  end if;
+
+
+
+/* 2 - make a purchased product */
+insert into kcd_purchased_product(serial_id,entity_id,product_id)
+ values (xserial_id,xentity_id,xproduct_id);
+
+
+
+kcd_set_key_purchased_product(xserial_id);
+
+
+
+kcd_set_purchase_param(xserial_id,xdatabase_name,null,xcompany_name);
+
+kcd_build_license_entries(xserial_id,xentity_id,trunc(sysdate),add_months(trunc(sysdate),13));
+
+end;
+/
+
