@@ -1,5 +1,5 @@
 create or replace function kcd_is_prime(xx in number)
-/* determines if a number is prima and not - not an estimate */
+/* determines if a number is prime or not - not an estimate */
 return number
 is
 p number; q number;
@@ -27,6 +27,8 @@ return(1);
 end;
 /
 create or replace function kcd_find_prime(min_value number,max_value number)
+/* find a prime number in the give range to be used for RSA functions
+Note- the bit size makes this woefully inadequate for strong encryption,  but it will keep them guessing for a while */
 return number
 is
 xx number;
@@ -41,6 +43,7 @@ return(xx);
 end;
 /
 create or replace function kcd_gcd(xa in number,xb in number)
+/* find the greatest common denominator */
 return number
 is
 a number;
@@ -59,6 +62,7 @@ return(a);
 end;
 /
 create or replace function kcd_lcm(xa in number,xb in number)
+/* find the least common multiple */
 return number
 is
 a number;
@@ -68,6 +72,7 @@ return(a*xb);
 end;
 /
 create or replace function kcd_extended_gcd(xb number,xn number)
+/* get the greatest common denominator with extended information that allows this to be used with RSA */
 return number
 is
 b0 number;
@@ -119,6 +124,9 @@ end;
 
 
 create or replace function kcd_modpow(xb number, xe number, m number)
+/* (xb ^ xe) mod m 
+computed efficiently 
+*/
 return number
 is
 result number;
@@ -144,8 +152,11 @@ end;
 
 
 
-
-create or replace procedure kcd_set_key_purchased_product (xserial_id in number)
+create or replace procedure kcd_precompute_key
+/* this precomputes a key to be used.  because it takes a long time (minute or so) to compute the keys,  we do it offline first 
+This can be called beforehand,  or is automatically called by kcd_set_key_purchased_product if necessary 
+These keys are disposable as they are deleted after used.
+*/
 is
 
 from_range number;
@@ -167,31 +178,40 @@ to_range   := 65534009;
 
 loop
   loop
-p := kcd_find_prime(from_range,to_range);
-q := kcd_find_prime(from_range,to_range); 
-  exit when p != q;
-  end loop;
-/* testing */
-dbms_output.put_line('p '||p);
-dbms_output.put_line('q '||q);
-n := p*q;
+    p := kcd_find_prime(from_range,to_range);
+    q := kcd_find_prime(from_range,to_range); 
+    exit when p != q;
+    end loop;
 
-totient := kcd_lcm(p-1,q-1);
-/*totient := (p-1)*(q-1);*/
-dbms_output.put_line ('totient  '||totient);
-e := 65537; 
+  /* testing */
+  dbms_output.put_line('p '||p);
+  dbms_output.put_line('q '||q);
+
+  n := p*q;
+
+  totient := kcd_lcm(p-1,q-1);
+  /*totient := (p-1)*(q-1);*/
+  dbms_output.put_line ('totient  '||totient);
+  e := 65537; 
   exit when  kcd_gcd(totient,e) = 1;
- end loop;
+  end loop;
 
 d := kcd_extended_gcd(e,totient);
+
 dbms_output.put_line ('d '||d);
 dbms_output.put_line ('test ' || mod(e*d,totient));
+
 source := trunc(dbms_random.value(11,81))*10000000000+ to_number(to_char(sysdate,'yyyymmdd'))*100 + trunc(dbms_random.value(11,81));
 /*source := to_number(to_char(sysdate,'yyyymmdd'));*/
+
 dbms_output.put_line ('source '||source);
+
 sign := kcd_modpow(source,d,n);
+
 dbms_output.put_line('sign '||sign);
+
 xresource := kcd_modpow(sign,e,n);
+
 dbms_output.put_line ('resource '||xresource);
 
 declare
@@ -208,15 +228,59 @@ begin
  xn := n;
  xe := e;
  xd := d;
- update kcd_purchased_product
- set p=xp,q=xq,totient=xtotient,n=xn,
-   e=xe,d=xd where serial_id=xserial_id;
+ insert into kcd_precomputed_codes(code_id,p,q,totient,n,e,d)
+ values (kcd_seq.nextval,xp,xq,xtotient,xn,xe,xd);
  end;
 
 end;
 /
 
 
+
+create or replace procedure kcd_set_key_purchased_product (xserial_id in number)
+/* Hib Engler Sep 2008 this used to compute the RSA key for the user uniquely,  but it took too long (5 minutes or so) 
+,  so it will look in the table kcd_precomputed_codes for a precomputed key 
+if it exists.  if it does not ,  then it will compute a key.  this kmeans that we can precompute the keys ahead of time, keeping the system fast normally. 
+*/
+is
+
+xcode number;
+
+cursor abc is select code_id,p,q,totient,n,e,d from kcd_precomputed_codes where rownum<2
+for update;
+
+  xp number;
+  xq number;
+  xtotient number;
+  xn number;
+  xe number;
+  xd number;
+begin
+
+/* get and lock the record */
+open abc;
+fetch abc into xcode,xp,xq,xtotient,xn,xe,xd;
+
+if xcode is null then /* the queue is empty */
+  close abc;
+  kcd_precompute_key;
+  open abc;
+  fetch abc into xcode,xp,xq,xtotient,xn,xe,xd;
+  end if;
+  
+if xcode is null then /* there is something wrong */
+  close abc;
+  raise_application_error(20002,'no precomputed key');
+  end if;
+  
+
+ update kcd_purchased_product
+ set p=xp,q=xq,totient=xtotient,n=xn,
+   e=xe,d=xd where serial_id=xserial_id;
+ delete from kcd_precomputed_codes where code_id=xcode;
+ close abc;
+end;
+/
 
 
 
@@ -284,7 +348,14 @@ create or replace procedure kcd_set_purchase_param (
   xserial_id number,
   xdatabase_name varchar2,
   xowner varchar2,
-  xcompany_name varchar2)
+  xcompany_name varchar2,
+  xsimple varchar2)
+/* Hib - Sep 2008 - This finds random string characters so that we can make the demos random
+Now if the demos are not random,  we will use more conventional strings.
+That is what xsimple is - 'Y' for xsimple does not use random,  but uses fixed values instead
+xsimple should be 'N' for demos - that way we can trace back the demos to a person hopefully.
+*/
+
 is
 xserial varchar2(5);
 xserial2 varchar2(16);
@@ -292,52 +363,61 @@ xserial3 varchar2(5);
 xserial4 varchar2(3);
 j varchar2(1);
 begin
-xserial := dbms_random.string('',5);
-xserial2 := dbms_random.string('',16);
-xserial4 :=  dbms_random.string('',3);
 
-/* serial3 is special - because the first random character needs to be between a-Q - and then then other random characters
-  need to be around a 10 character block 
-  Also - the next set of letters need to be random */
-loop 
-  xserial3 := dbms_random.string('',1);
-  exit when xserial >='A' and xserial3 <='Q';
-end loop;
+if xsimple = 'Y' then 
+  xserial := 'AAAAAA';
+  xserial2 := 'AAAAAAAAAREALXAA';
+  xserial4 := 'AAA';
+  xserial3 := 'AVFPJ';
+else
 
-loop
-  j := dbms_random.string('',1);
-  exit when j< substr(xserial3,1,1) or j >  chr(ascii(substr(xserial3,1,1))+10);
-  /* if outside the 10 character range */
-end loop;
-xserial3 := xserial3 || j;
+  
+  xserial := dbms_random.string('',5);
+  xserial2 := dbms_random.string('',16);
+  xserial4 :=  dbms_random.string('',3);
 
-loop
-  j := dbms_random.string('',1);
-  exit when (j< substr(xserial3,1,1) or j >  chr(ascii(substr(xserial3,1,1))+10))
-      and j != substr(xserial3,2,1);
-  /* if outside the 10 character range */
-end loop;
-xserial3 := xserial3 || j;
+  /* serial3 is special - because the first random character needs to be between A-Q - and then then other random characters
+    need to be around a 10 character block 
+    Also - the next set of letters need to be random */
+  loop 
+    xserial3 := dbms_random.string('',1);
+    exit when xserial >='A' and xserial3 <='Q';
+  end loop;
 
-loop
-  j := dbms_random.string('',1);
-  exit when (j< substr(xserial3,1,1) or j >  chr(ascii(substr(xserial3,1,1))+10))
-      and j != substr(xserial3,2,1)
-      and j != substr(xserial3,3,1);
-  /* if outside the 10 character range */
-end loop;
-xserial3 := xserial3 || j;
+  loop
+    j := dbms_random.string('',1);
+    exit when j< substr(xserial3,1,1) or j >  chr(ascii(substr(xserial3,1,1))+10);
+    /* if outside the 10 character range */
+  end loop;
+  xserial3 := xserial3 || j;
 
-loop
-  j := dbms_random.string('',1);
-  exit when (j< substr(xserial3,1,1) or j >  chr(ascii(substr(xserial3,1,1))+10))
-      and j != substr(xserial3,2,1)
-      and j != substr(xserial3,3,1)
-      and j != substr(xserial3,4,1);
-  /* if outside the 10 character range */
-end loop;
-xserial3 := xserial3 || j;
+  loop
+    j := dbms_random.string('',1);
+    exit when (j< substr(xserial3,1,1) or j >  chr(ascii(substr(xserial3,1,1))+10))
+        and j != substr(xserial3,2,1);
+    /* if outside the 10 character range */
+  end loop;
+  xserial3 := xserial3 || j;
 
+  loop
+    j := dbms_random.string('',1);
+    exit when (j< substr(xserial3,1,1) or j >  chr(ascii(substr(xserial3,1,1))+10))
+        and j != substr(xserial3,2,1)
+        and j != substr(xserial3,3,1);
+    /* if outside the 10 character range */
+  end loop;
+  xserial3 := xserial3 || j;
+
+  loop
+    j := dbms_random.string('',1);
+    exit when (j< substr(xserial3,1,1) or j >  chr(ascii(substr(xserial3,1,1))+10))
+        and j != substr(xserial3,2,1)
+        and j != substr(xserial3,3,1)
+        and j != substr(xserial3,4,1);
+    /* if outside the 10 character range */
+  end loop;
+  xserial3 := xserial3 || j;
+  end if; /* if we are random like for a demo */
 
 update kcd_purchased_product 
   set serial=nvl(serial,xserial),
@@ -358,7 +438,15 @@ create or replace procedure kcd_new_purchased_product
 (xserial_id in number,
 xproduct_id in number,
 xcompany_name in varchar2,
-xdatabase_name in varchar2)
+xdatabase_name in varchar2,
+xsimple in varchar2)
+/* Hib Engler Sep 2008 - This procedure creates a new purchased product - and sets up a key for it,  
+If xsimple is set to Y,  the purchase is non-demo - which means that the procedures will not be obsufigated.
+But,  there are differences still because the RSA code is different
+
+
+This is the main call.
+*/
 is
 xt number;
 xentity_id number;
@@ -424,10 +512,13 @@ kcd_set_key_purchased_product(xserial_id);
 
 
 
-kcd_set_purchase_param(xserial_id,xdatabase_name,null,xcompany_name);
+kcd_set_purchase_param(xserial_id,xdatabase_name,null,xcompany_name,xsimple);
 
 kcd_build_license_entries(xserial_id,xentity_id,trunc(sysdate),add_months(trunc(sysdate),13));
 
 end;
 /
+
+
+
 

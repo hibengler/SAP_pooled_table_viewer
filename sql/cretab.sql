@@ -31,6 +31,17 @@ notes varchar2(2000)
 )
 /
 
+
+create table kcd_precomputed_codes (
+code_id number not null primary key,
+p number not null,
+q number not null,
+totient number not null,
+n number not null,
+e number not null,
+d number not null)
+;
+
 create table kcd_license_entry (
 entity_id number references kcd_business_entity(entity_id),
 serial_id number references kcd_purchased_product(serial_id),
