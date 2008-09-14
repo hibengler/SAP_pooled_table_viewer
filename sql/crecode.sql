@@ -285,7 +285,8 @@ end;
 
 
 
-create or replace procedure kcd_build_license_entries(xserial_id in number,xentity_id in number,
+create or replace procedure kcd_build_license_entries(
+xserial_id in number,xentity_id in number,
 xfrom_date in date,xto_date in date)
 is
 xdate date;
@@ -437,11 +438,18 @@ end;
 create or replace procedure kcd_new_purchased_product
 (xserial_id in number,
 xproduct_id in number,
-xcompany_name in varchar2,
 xdatabase_name in varchar2,
-xsimple in varchar2)
+xcompany_name in varchar2,
+xemail_address in varchar2,
+xcontact_name in varchar2,
+xaddress in varchar2,
+xphone in varchar2,
+xsimple in varchar2,
+xnumber_of_licensed_days in number
+)
 /* Hib Engler Sep 2008 - This procedure creates a new purchased product - and sets up a key for it,  
-If xsimple is set to Y,  the purchase is non-demo - which means that the procedures will not be obsufigated.
+If xsimple is set to Y,  
+the purchase is non-demo - which means that the procedures will not be obsufigated.
 But,  there are differences still because the RSA code is different
 
 
@@ -496,15 +504,16 @@ fetch a2 into xentity_id;
 close a2;
 if xentity_id is null then 
   select kcd_seq.nextval into xentity_id from dual;
-  insert into kcd_business_entity(entity_id,entity_name)
-    values (xentity_id,xcompany_name);
+  insert into kcd_business_entity(entity_id,entity_name,contact_name,address,phone,email_address)
+    values (xentity_id,xcompany_name,xcontact_name,xaddress,xphone,xemail_address);
   end if;
 
 
 
 /* 2 - make a purchased product */
-insert into kcd_purchased_product(serial_id,entity_id,product_id)
- values (xserial_id,xentity_id,xproduct_id);
+insert into kcd_purchased_product(serial_id,entity_id,product_id,contact_name,address,phone,email_address)
+ values (xserial_id,xentity_id,xproduct_id,xcontact_name,xaddress,xphone,xemail_address);
+ 
 
 
 
@@ -514,7 +523,7 @@ kcd_set_key_purchased_product(xserial_id);
 
 kcd_set_purchase_param(xserial_id,xdatabase_name,null,xcompany_name,xsimple);
 
-kcd_build_license_entries(xserial_id,xentity_id,trunc(sysdate),add_months(trunc(sysdate),13));
+kcd_build_license_entries(xserial_id,xentity_id,trunc(sysdate),trunc(sysdate)+xnumber_of_licensed_days);
 
 end;
 /

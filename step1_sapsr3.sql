@@ -1,4 +1,6 @@
-REM step1.sql - this creates the framework in the SAPSR3 user.
+REM step1_sapsr3.sql - this creates the framework in the SAPSR3 user.
+REM Copyright 2008 Killer Computer Development, LLC.
+REM http://kcd.com
 REM 
 set heading off feedback off verify off pagesize 0 linesize 400
 

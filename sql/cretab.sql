@@ -6,7 +6,11 @@ url varchar2(200) not null)
 
 create table kcd_business_entity (
 entity_id number not null primary key,
-entity_name varchar2(200) not null unique
+entity_name varchar2(200) not null unique,
+contact_name varchar2(100),
+address varchar2(2000),
+phone varchar2(20),
+email_address varchar2(200)
 )
 /
 
@@ -27,7 +31,11 @@ company_name varchar2(40),
 serial2 varchar2(16),
 serial3 varchar2(5),
 serial4 varchar2(3),
-notes varchar2(2000)
+notes varchar2(2000),
+contact_name varchar2(100),
+address varchar2(2000),
+phone varchar2(20),
+email_address varchar2(200)
 )
 /
 

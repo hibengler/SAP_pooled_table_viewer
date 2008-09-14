@@ -1,4 +1,7 @@
-REM step2 - this generates the create view scripts
+REM step2_sapsr3 - this generates the create view scripts
+REM Copyright 2008 Killer Computer Development, LLC.
+REM http://kcd.com
+
 set heading off feedback off verify off pagesize 0 linesize 400
 
 

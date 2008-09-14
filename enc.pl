@@ -17,9 +17,9 @@ require "fm_tables.pl";
 # build_code - this does most of the work
 # it creates files
 #
-sub build_code {
-local ($serial_id) = @_;
-
+#sub build_code {
+#local ($serial_id) = @_;
+$serial_id=1;
 &fm_tables'login();
 
 ($serial_id,$serial,$serial2,$serial3,$serial4,$enc_n,$enc_e,
@@ -40,20 +40,20 @@ srand $serial_id;
 # because of the multiple ways, it is likely that we can figure out who copied what
 # Serial is a special code that we internally set.  It is not to be stored riectly
 $serial_id=1;
-$serial = AGHEY;
+#$serial = AGHEY;
 # Database name is the name of the database
-$database_name = "EAT AT JOES";
+#$database_name = "EAT AT JOES";
 # company name is the name of the company
-$company_name ='PGP';
+#$company_name ='PGP';
 # serial2 is used to figure out which key field means what
-$serial2 = DFKRRDFSJKDSFKEE;
+#$serial2 = DFKRRDFSJKDSFKEE;
 # a-i are 0-9 but the others variate
 # serial3 is used to osfucitae the name of the variables
-$serial3=AQKLP;
+#$serial3=AQKLP;
 # serial4 is used for return atermarking
-$serial4=ASE;
-$enc_n = '2085011741866147';
-$enc_e = 65537;
+#$serial4=ASE;
+#$enc_n = '2085011741866147';
+#$enc_e = 65537;
 
 
 
@@ -687,7 +687,7 @@ select
 ,  'T',' \&code_owner..$sx_debug_column(vardata,dataln,'||dataseq||','||fieldpos||','''||tabname||''','''||fieldname||''')'
 ,'???unknown inttype '||inttype||'.'
 	)
-	   || decode(inttype,' ','\"'||fieldname||position|| '\"','\"'||fieldname||'__DEBUG\"')
+	   || decode(inttype,' ','\"'||fieldname||position||'__DEBUG'||'\"','\"'||fieldname||'__DEBUG\"')
 from	   
 (select c.*,(select nvl(sum(intlen),0) startint
       from \&code_owner..$sx_dd03l c2
