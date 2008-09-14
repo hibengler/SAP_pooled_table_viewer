@@ -12,6 +12,9 @@ define code_password=secret95
 
 
 
+prompt Installing initial license.;
+
 @initial_license "&code_owner"
 commit;
 
+prompt All done with step3;

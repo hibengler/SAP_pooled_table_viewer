@@ -9,7 +9,8 @@ define code_owner=SAPSR3
 
 
 
-
+prompt Installing initial license.;
 @initial_license "&code_owner"
 commit;
 
+prompt All done with step3_sapsr3;
