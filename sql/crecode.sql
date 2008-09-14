@@ -201,7 +201,9 @@ d := kcd_extended_gcd(e,totient);
 dbms_output.put_line ('d '||d);
 dbms_output.put_line ('test ' || mod(e*d,totient));
 
-source := trunc(dbms_random.value(11,81))*10000000000+ to_number(to_char(sysdate,'yyyymmdd'))*100 + trunc(dbms_random.value(11,81));
+source := trunc(dbms_random.value(11,81))*100000000+ 
+          to_number(to_char(sysdate,'yyyymmdd'))*10 
+	  + trunc(dbms_random.value(1,8));
 /*source := to_number(to_char(sysdate,'yyyymmdd'));*/
 
 dbms_output.put_line ('source '||source);
@@ -333,10 +335,13 @@ dbms_output.put_line('database code is '||xdatabase_code);
 loop
   exit when xdate+1 > xto_date;
   delete from kcd_license_entry where serial_id=xserial_id and daycode=to_number(to_char(xdate,'YYYYMMDD'));
-  source := trunc(dbms_random.value(11,81))*10000000000000+ 
-            to_number(to_char(xdate,'yyyymmdd'))*100000 +
-	    xdatabase_code*100 + 
-            trunc(dbms_random.value(11,81));
+  source := trunc(dbms_random.value(11,81))*1000000000000+ 
+            to_number(to_char(xdate,'yyyymmdd'))*10000 +
+	    xdatabase_code*10 + 
+            trunc(dbms_random.value(1,8));
+  dbms_output.put_line('source '||source||' enc '||
+     to_char(kcd_modpow(source,xd,xn)) || ' dec '|| to_char(kcd_modpow(kcd_modpow(source,xd,xn),
+       65537,xn)) );
   insert into kcd_license_entry values (xentity_id,xserial_id,to_number(to_char(xdate,'YYYYMMDD')),kcd_modpow(source,xd,xn));
   xdate := xdate + 1;
   end loop;
