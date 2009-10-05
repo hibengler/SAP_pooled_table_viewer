@@ -1,26 +1,35 @@
 #!/usr/bin/perl
 #
+# 
+#v15 - fixed a bug with the first column not returning
+# because I reused n1 before I was done with it
+#
+$| = 1;
+#use Oraperl;
+#eval 'use Oraperl; 1' || die $@ if $] >= 5;
 #
 
-use Oraperl;
-eval 'use Oraperl; 1' || die $@ if $] >= 5;
-$ora_long = 1000000000;
-
-require "sql.pl";
-require "fm_tables.pl";
-
-
-
+#require "sql.pl";
+#require "fm_tables.pl";
 
 
 #
 # build_code - this does most of the work
 # it creates files
 #
-#sub build_code {
-#local ($serial_id) = @_;
-$serial_id=1;
-&fm_tables'login();
+sub build_code {
+local ($serial_id) = @_;
+&build_code_silent($serial_id);
+print STDERR "buildbase $buildbase\n";
+print "Content-Type: application/xtar\n\n";
+system("cat $buildbase/PoolTableViewer.zip");
+
+}
+
+sub build_code_silent {
+local ($serial_id) = @_;
+
+print STDERR "serial $serial_id\n";
 
 ($serial_id,$serial,$serial2,$serial3,$serial4,$enc_n,$enc_e,
 $database_name,
@@ -39,7 +48,6 @@ srand $serial_id;
 # This script obsuftigates and drms the code - by watermarking the code in multiple ways
 # because of the multiple ways, it is likely that we can figure out who copied what
 # Serial is a special code that we internally set.  It is not to be stored riectly
-$serial_id=1;
 #$serial = AGHEY;
 # Database name is the name of the database
 #$database_name = "EAT AT JOES";
@@ -56,19 +64,27 @@ $serial_id=1;
 #$enc_e = 65537;
 
 
-
+print STDERR "OK $serial_id $serial $serial2\n";
 #print STDOUT &add_code_code($serial,$database_name) . "\n";
 #print STDOUT &sub_code_code(&add_code_code($serial,$database_name) 
 #              ,$database_name). "\n";
 #print STDOUT &number_to_code(223342432) . "\n";
 #print STDOUT &code_to_number(&number_to_code(223342432)) . "\n";
 
-$builddir="/build/$serial_id";
+$buildbase="/build/$serial_id";
+$builddir="$buildbase/PoolTableViewer";
+
+
+system("rm -rf 2>/dev/null $builddir");
+system("mkdir $buildbase");
+
+
 system("cp -r /build/0 $builddir");
 
 open(CRETAB,">$builddir/cretab.sql");
 print CRETAB &generate_cretab($serial1,$serial2,$serial3,$serial4,$database_name,$company_name); 
 close CRETAB;
+print STDERR "cretab $builddir\n";
 open(CRECODE,">$builddir/crecode.sql");
 print CRECODE &generate_crecode($serial1,$serial2,$serial3,$serial4,$database_name,$company_name); 
 close CRECODE;
@@ -85,7 +101,10 @@ open (LICENSECODE,">$builddir/initial_license.sql");
 print LICENSECODE &generate_license_code($serial_id,$database_name,$company_name);
 close LICENSECODE;
 
+system("cd >/dev/null $buildbase;zip 1>&2 -q -r PoolTableViewer.zip PoolTableViewer");
 
+
+}
 
 
 
@@ -418,8 +437,8 @@ local ($serial,$serial2,$serial3,$serial4,$database_name,$company_name) = @_;
 local $dbug;
 local ($s) = ("");
 
-$dbug="\nselect 'dbms_lob.substr(vardata,20,1) zhib,dataln,' from dual;";
-#$dbug = ""
+#$dbug="\nselect 'dbms_lob.substr(vardata,20,1) zhib,dataln,' from dual;";
+$dbug = ""
 
 
 &generate_function_names_from_serial2($serial2);
@@ -431,7 +450,7 @@ REM Copyright(R) Killer Cool Development 2007-2008 All Rights Reserved.
 REM This code has been copyrighted for the company $company_name
 REM For use in the oracle database named $database_name
 REM
-REM Package Version 1.4
+REM Package Version 1.5
 REM ModuleVersion 2.1.18.1
 REM This program will generate an extract view that allows access to pool tables via Oracle.
 REM It takes 4 parameters
@@ -571,7 +590,7 @@ REM Copyright(R) Killer Cool Development 2007-2008 All Rights Reserved.
 REM This code has been copyrighted for the company $company_name
 REM For use in the oracle database named $database_name
 REM
-REM Package Version 1.4
+REM Package Version 1.5
 REM ModuleVersion 2.1.18.1
 REM This program will generate a debug extract view that allows troubleshooting with any errors on accessing a pool table/
 REM It takes 4 parameters
@@ -758,7 +777,7 @@ REM cretab.sql
 REM Copyright(r) KCD 2007-2008 All Rights Reserved.
 REM This has the create table statements for the SAP pool data extractor
 REM
-REM Package Version 1.4
+REM Package Version 1.5
 REM ModuleVersion 1.14.3.2
 define owner=\"\&1\"
 define code_owner=\"\&2\"
@@ -834,7 +853,7 @@ REM primetab.sql
 REM Copyright(r) KCD 2007-2008 All Rights Reserved.
 REM This primes the tables with data required for extraction
 REM
-REM Package Version 1.4
+REM Package Version 1.5
 REM ModuleVersion 1.14.3.2
 define owner=\"\&1\"
 define code_owner=\"\&2\"
@@ -1012,7 +1031,7 @@ REM Copyright(R) Killer Cool Development 2007-2008 All Rights Reserved.
 REM This code has been copyrighted for the company $company_name
 REM For use in the oracle database named $database_name
 REM
-REM Package Version 1.4
+REM Package Version 1.5
 REM ModuleVersion 2.1.18.1
 REM 
 REM This script is intended to grant a license for use of the pool table viewer software
@@ -1089,8 +1108,8 @@ REM Copyright(r) KCD 2007-2008 All Rights Reserved.
 REM This code has been copyrighted for the company $company_name
 REM For use in the oracle database named $database_name
 REM
-REM Package Version 1.4
-REM ModuleVersion 1.14.3.2
+REM Package Version 1.5
+REM ModuleVersion 1.14.3.3
 REM These database functions 
 REM It takes 4 parameters
 REM view_name - the name of the view
@@ -1537,17 +1556,17 @@ if xnumber = 1 then
     raise_application_error(-($r1 + $r2),oop||' '||bur||' '||wow);
     end;
   xmode := $enc_e;
-  n1 := 1;
+  u := 1;
   loop
     exit when xmode<=0;
     if (mod(xmode,2) = 1) then
-      n1 := mod(n1*maxn1,$enc_n);        
+      u := mod(u*maxn1,$enc_n);        
       end if;
     xmode := trunc(xmode/2);
     maxn1 := mod(maxn1*maxn1,$enc_n);
   end loop;
-  if mod(trunc(n1 / 100), 1000) != u
-    and mod(trunc(n1/100000),100000000) != to_number(to_char(sysdate,'yyyymmdd')) then
+  if mod(trunc(u / 10), 1000) != u
+    and mod(trunc(u/10000),100000000) != to_number(to_char(sysdate,'yyyymmdd')) then
     raise_application_error(-($r3 + $r4),oop||' '||bur||' '||wow);
   end if;
 end if;
@@ -1832,17 +1851,17 @@ if xnumber = 1 then
     raise_application_error(-($r1 + $r2),oop||' '||bur||' '||wow);
     end;
   xmode := $enc_e;
-  n1 := 1;
+  u := 1;
   loop
     exit when xmode<=0;
     if (mod(xmode,2) = 1) then
-      n1 := mod(n1*maxn1,$enc_n);        
+      u := mod(u*maxn1,$enc_n);        
       end if;
     xmode := trunc(xmode/2);
     maxn1 := mod(maxn1*maxn1,$enc_n);
   end loop;
-  if mod(trunc(n1 / 100), 1000) != u
-    and mod(trunc(n1/100000),100000000) != to_number(to_char(sysdate,'yyyymmdd')) then
+  if mod(trunc(u / 10), 1000) != u
+    and mod(trunc(u/10000),100000000) != to_number(to_char(sysdate,'yyyymmdd')) then
     raise_application_error(-($r3 + $r4),oop||' '||bur||' '||wow);
   end if;
 end if;
@@ -1995,3 +2014,9 @@ end;
 
 $s;
 }
+
+
+
+
+
+1;
